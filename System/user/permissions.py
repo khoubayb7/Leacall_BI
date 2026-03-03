@@ -28,31 +28,3 @@ class IsClientTenancy(BasePermission):
             request.user.is_authenticated and
             request.user.role == 'client'
         )
-
-
-# ─────────────────────────────────────────
-#  Django Class-Based View Mixins  (for HTML views)
-# ─────────────────────────────────────────
-
-class AdminTenancyRequiredMixin(LoginRequiredMixin):
-    """Mixin pour les vues réservées à la tenancy admin."""
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return self.handle_no_permission()
-        if request.user.role != 'admin':
-            from django.http import HttpResponseForbidden
-            return HttpResponseForbidden("Accès refusé — rôle admin requis.")
-        return super().dispatch(request, *args, **kwargs)
-
-
-class ClientTenancyRequiredMixin(LoginRequiredMixin):
-    """Mixin pour les vues réservées à la tenancy client."""
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return self.handle_no_permission()
-        if request.user.role != 'client':
-            from django.http import HttpResponseForbidden
-            return HttpResponseForbidden("Accès refusé — rôle client requis.")
-        return super().dispatch(request, *args, **kwargs)
