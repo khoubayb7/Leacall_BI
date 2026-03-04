@@ -1,30 +1,22 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from rest_framework.permissions import BasePermission
 
+class RolePermission(BasePermission):
+    allowed_role = None
 
-# ─────────────────────────────────────────
-#  DRF Permissions  (for API views)
-# ─────────────────────────────────────────
-
-class IsAdminTenancy(BasePermission):
-    """Autorise uniquement les utilisateurs avec le rôle 'admin'."""
+    def has_permission(self, request, view):
+        return (
+            request.user and
+            request.user.is_authenticated and
+            request.user.role == self.allowed_role
+        )
+        
+        
+class IsAdmin(RolePermission):
+    allowed_role = "admin"
     message = "Accès réservé aux administrateurs."
 
-    def has_permission(self, request, view):
-        return (
-            request.user and
-            request.user.is_authenticated and
-            request.user.role == 'admin'
-        )
 
-
-class IsClientTenancy(BasePermission):
-    """Autorise uniquement les utilisateurs avec le rôle 'client'."""
+class IsClient(RolePermission):
+    allowed_role = "client"
     message = "Accès réservé aux clients."
-
-    def has_permission(self, request, view):
-        return (
-            request.user and
-            request.user.is_authenticated and
-            request.user.role == 'client'
-        )
