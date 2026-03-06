@@ -8,6 +8,7 @@ import ClientPlatform from "./pages/ClientPlatform";
 import Login from "./pages/Login";
 import ModulePlaceholder from "./pages/shared/ModulePlaceholder";
 import { getDefaultRouteForStoredUser, getStoredUser } from "./services/authService";
+import { getFirstEnabledModuleRoute, normalizeEnabledModules } from "./constants/clientModules";
 
 function RequireAuth({ children }) {
   const user = getStoredUser();
@@ -48,6 +49,25 @@ function CatchAllRoute() {
   return <Navigate to={getDefaultRouteForStoredUser()} replace />;
 }
 
+function ClientEntryRoute() {
+  const user = getStoredUser();
+  return <Navigate to={getFirstEnabledModuleRoute(user?.enabled_modules)} replace />;
+}
+
+function ClientModuleGuard({ children, moduleKey }) {
+  const user = getStoredUser();
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const enabledModules = normalizeEnabledModules(user.enabled_modules);
+  if (!enabledModules.includes(moduleKey)) {
+    return <Navigate to={getFirstEnabledModuleRoute(enabledModules)} replace />;
+  }
+
+  return children;
+}
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -85,13 +105,13 @@ export default function AppRouter() {
           </RoleGuard>
         )}
       >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<ClientPlatform />} />
-        <Route path="platform" element={<Navigate to="/client/dashboard" replace />} />
-        <Route path="my-calls" element={<ModulePlaceholder title="My Calls" description="Use this client module to track calls assigned to your account." />} />
-        <Route path="reports" element={<ModulePlaceholder title="Reports" description="This client report area can show your conversion and pipeline metrics." />} />
-        <Route path="tasks" element={<ModulePlaceholder title="Tasks" description="This task board can list your daily client actions." />} />
-        <Route path="support" element={<ModulePlaceholder title="Support" description="This support module can display tickets and contact channels." />} />
+        <Route index element={<ClientEntryRoute />} />
+        <Route path="dashboard" element={<ClientModuleGuard moduleKey="dashboard"><ClientPlatform /></ClientModuleGuard>} />
+        <Route path="platform" element={<ClientEntryRoute />} />
+        <Route path="my-calls" element={<ClientModuleGuard moduleKey="my_calls"><ModulePlaceholder title="My Calls" description="Use this client module to track calls assigned to your account." /></ClientModuleGuard>} />
+        <Route path="reports" element={<ClientModuleGuard moduleKey="reports"><ModulePlaceholder title="Reports" description="This client report area can show your conversion and pipeline metrics." /></ClientModuleGuard>} />
+        <Route path="tasks" element={<ClientModuleGuard moduleKey="tasks"><ModulePlaceholder title="Tasks" description="This task board can list your daily client actions." /></ClientModuleGuard>} />
+        <Route path="support" element={<ClientModuleGuard moduleKey="support"><ModulePlaceholder title="Support" description="This support module can display tickets and contact channels." /></ClientModuleGuard>} />
       </Route>
 
       <Route

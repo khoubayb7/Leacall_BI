@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .permissions import IsAdmin, IsClient
-from .serializers import AdminSerializer, ClientCreateSerializer, ClientSerializer
+from .serializers import AdminSerializer, ClientCreateSerializer, ClientSerializer, ClientUpdateSerializer
 
 User = get_user_model()
 
@@ -21,6 +21,7 @@ class CustomTokenSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token["role"] = user.role
         token["leacall_tenancy_url"] = user.leacall_tenancy_url
+        token["enabled_modules"] = user.enabled_modules
         return token
 
 
@@ -103,12 +104,11 @@ class ClientDetailView(APIView):
         if not client:
             return Response({"error": "Client introuvable."}, status=status.HTTP_404_NOT_FOUND)
 
-        editable_fields = ["email", "leacall_tenancy_url", "is_active"]
-        for field in editable_fields:
-            if field in request.data:
-                setattr(client, field, request.data[field])
-        client.save()
+        serializer = ClientUpdateSerializer(client, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        serializer.save()
         return Response(ClientSerializer(client).data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):

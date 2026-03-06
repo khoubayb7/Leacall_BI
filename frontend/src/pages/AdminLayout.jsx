@@ -9,5 +9,5 @@ const adminMenu = [
 ];
 
 export default function AdminLayout() {
-  return <AppShell brandName="CallTracker" brandInitial="C" menuItems={adminMenu} />;
+  return <AppShell brandName="Leacall BI" brandInitial="L" menuItems={adminMenu} />;
 }

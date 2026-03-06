@@ -97,6 +97,7 @@ body {
 
 .primary-btn,
 .secondary-btn,
+.danger-btn,
 .sidebar-logout {
   border: 0;
   border-radius: 10px;
@@ -117,7 +118,16 @@ body {
   color: #d6e7ff;
 }
 
+.danger-btn {
+  background: rgba(145, 35, 35, 0.45);
+  color: #ffd3d3;
+}
+
 .secondary-btn.compact {
+  width: auto;
+}
+
+.danger-btn.compact {
   width: auto;
 }
 
@@ -155,6 +165,9 @@ body {
 }
 
 .workspace-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -351,6 +364,57 @@ body {
   grid-column: 1 / -1;
 }
 
+.module-pick-title {
+  margin: 0 0 8px;
+  color: var(--text-soft);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.module-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.module-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid #1e4b79;
+  border-radius: 10px;
+  background: rgba(6, 28, 53, 0.75);
+  font-size: 0.9rem;
+}
+
+.module-option input {
+  accent-color: var(--accent);
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.edit-form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.edit-form h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.edit-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -400,6 +464,8 @@ th {
   }
 
   .workspace-sidebar {
+    position: static;
+    height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }

@@ -1,8 +1,15 @@
 import api from "./api";
+import { getFirstEnabledModuleRoute } from "../constants/clientModules";
 
 export function getDefaultRouteForRole(role) {
   if (role === "admin") return "/admin/dashboard";
-  if (role === "client") return "/client/dashboard";
+  if (role === "client") return getFirstEnabledModuleRoute(["dashboard"]);
+  return "/login";
+}
+
+export function getDefaultRouteForUser(user) {
+  if (user?.role === "admin") return "/admin/dashboard";
+  if (user?.role === "client") return getFirstEnabledModuleRoute(user?.enabled_modules);
   return "/login";
 }
 
@@ -44,6 +51,5 @@ export function getStoredUser() {
 }
 
 export function getDefaultRouteForStoredUser() {
-  const user = getStoredUser();
-  return getDefaultRouteForRole(user?.role);
+  return getDefaultRouteForUser(getStoredUser());
 }

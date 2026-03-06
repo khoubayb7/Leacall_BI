@@ -10,9 +10,9 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ("role", "is_staff", "is_active")
 
     fieldsets = UserAdmin.fieldsets + (
-        ("Role data", {"fields": ("role", "leacall_tenancy_url")}),
+        ("Role data", {"fields": ("role", "leacall_tenancy_url", "enabled_modules")}),
     )
 
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ("Role data", {"fields": ("role", "leacall_tenancy_url", "email")}),
+        ("Role data", {"fields": ("role", "leacall_tenancy_url", "enabled_modules", "email")}),
     )

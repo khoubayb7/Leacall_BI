@@ -1,13 +1,14 @@
 import AppShell from "../components/layouts/AppShell";
-
-const clientMenu = [
-  { to: "/client/dashboard", label: "Client Dashboard", icon: "grid", end: false },
-  { to: "/client/my-calls", label: "My Calls", icon: "phone", end: false },
-  { to: "/client/reports", label: "Reports", icon: "chart", end: false },
-  { to: "/client/tasks", label: "Tasks", icon: "file", end: false },
-  { to: "/client/support", label: "Support", icon: "bell", end: false },
-];
+import { CLIENT_MODULE_OPTIONS, normalizeEnabledModules } from "../constants/clientModules";
+import { getStoredUser } from "../services/authService";
 
 export default function ClientLayout() {
-  return <AppShell brandName="CallTracker" brandInitial="C" menuItems={clientMenu} />;
+  const user = getStoredUser();
+  const enabledModules = new Set(normalizeEnabledModules(user?.enabled_modules));
+
+  const clientMenu = CLIENT_MODULE_OPTIONS
+    .filter((module) => enabledModules.has(module.key))
+    .map((module) => ({ to: module.route, label: module.label, icon: module.icon, end: false }));
+
+  return <AppShell brandName="Leacall BI" brandInitial="L" menuItems={clientMenu} />;
 }

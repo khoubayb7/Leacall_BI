@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 import FormInput from "../components/ui/FormInput";
-import { getDefaultRouteForRole, loginUser } from "../services/authService";
+import { getDefaultRouteForUser, loginUser } from "../services/authService";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -22,8 +22,7 @@ export default function Login() {
 
     try {
       const data = await loginUser(form);
-      const role = data?.user?.role;
-      navigate(getDefaultRouteForRole(role), { replace: true });
+      navigate(getDefaultRouteForUser(data?.user), { replace: true });
     } catch (err) {
       const apiError = err?.response?.data;
       const message = apiError?.detail || apiError?.non_field_errors?.[0] || "Identifiants invalides.";
