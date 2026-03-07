@@ -1,7 +1,0 @@
-Logique Globale de Ton Système
-Flux complet :
-L’admin crée un client → ClientCreateSerializer
-Le client reçoit ses identifiants
-Il se connecte → LoginSerializer
-L’API renvoie un token
-Les permissions contrôlent l’accès selon role
