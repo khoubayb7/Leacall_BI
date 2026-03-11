@@ -1,4 +1,3 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
 from rest_framework.permissions import BasePermission
 
 class RolePermission(BasePermission):

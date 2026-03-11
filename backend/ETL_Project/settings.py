@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "ETL",
     "user",
     "agent",
 ]
@@ -103,3 +104,18 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ── LLM Agent ─────────────────────────────────────────────────────────────────
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+
+# Directory where the agent writes generated ETL files
+WORKSPACE_DIR = BASE_DIR / "workspace"
+
+# Max LLM retries per ETL step before giving up
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+
+# Canonical ETL reference files used as code templates by the agent
+ETL_EXTRACT_REF = str(BASE_DIR / "ETL" / "extractor.py")
+ETL_TRANSFORM_REF = str(BASE_DIR / "ETL" / "transformer.py")
+ETL_LOAD_REF = str(BASE_DIR / "ETL" / "loader.py")

@@ -6,7 +6,6 @@ passent par ce module. Les views appellent ce service,
 jamais l'API leacall directement.
 """
 import requests
-from requests.auth import HTTPBasicAuth
 from rest_framework import status
 
 
@@ -23,12 +22,16 @@ class LeacallClient:
     """
 
     def __init__(self, user):
-        if not user.leacall_url:
+        if not user.leacall_tenancy_url:
             raise LeacallAPIError("Ce client n'a pas de serveur leacall configuré.")
 
-        self.base_url = user.leacall_url.rstrip('/')
-        self.auth     = HTTPBasicAuth(user.leacall_username, user.leacall_password)
-        self.headers  = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+        self.base_url = user.leacall_tenancy_url.rstrip('/')
+        self.headers  = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+        if user.leacall_api_key:
+            self.headers['Authorization'] = f'Bearer {user.leacall_api_key}'
 
     def _request(self, method, endpoint, **kwargs):
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
@@ -36,9 +39,8 @@ class LeacallClient:
             response = requests.request(
                 method,
                 url,
-                auth=self.auth,
                 headers=self.headers,
-                timeout=10,
+                timeout=30,
                 **kwargs,
             )
         except requests.exceptions.ConnectionError:
@@ -56,7 +58,7 @@ class LeacallClient:
 
         return response.json()
 
-    # ── Méthodes publiques — à étendre selon l'API leacall ────────────────
+    # ── Méthodes publiques ────────────────────────────────────────────────
 
     def get(self, endpoint, params=None):
         return self._request('GET', endpoint, params=params)
