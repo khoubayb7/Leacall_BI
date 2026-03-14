@@ -16,7 +16,7 @@ class ClientDataSource(models.Model):
         OTHER = "other", "Autre"
 
     client = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        settings.AUTH_USER_MODEL,#####
         on_delete=models.CASCADE,
         related_name="data_sources",
     )
@@ -64,7 +64,7 @@ class ClientDataSource(models.Model):
     def get_api_endpoint(self) -> str:
         if self.api_endpoint:
             return self.api_endpoint
-        return f"/api/campaigns/{self.campaign_id}/contacts/"
+        return f"/api/bi/campaigns/{self.campaign_id}/leads/"
 
 
 # ─── ETL Run ──────────────────────────────────────────────────────────────────

@@ -108,6 +108,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ── LLM Agent ─────────────────────────────────────────────────────────────────
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+LEACALL_BI_API_KEY = os.getenv("LEACALL_BI_API_KEY", "")
 
 # Directory where the agent writes generated ETL files
 WORKSPACE_DIR = BASE_DIR / "workspace"

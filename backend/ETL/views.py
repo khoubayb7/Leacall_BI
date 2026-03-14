@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -15,6 +16,8 @@ from .serializers import (
     ETLRunSerializer,
     ETLRunSyncTriggerSerializer,
 )
+
+User = get_user_model()
 
 
 # ── Data Sources (admin manages, clients can view their own) ──────────────────
@@ -38,9 +41,31 @@ class DataSourceListCreateView(APIView):
                 {"detail": "Seul un admin peut créer des sources de données."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        client_id = request.data.get("client_id", request.user.pk)
+        if client_id in (None, ""):
+            return Response(
+                {"client_id": ["This field is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            client_id = int(client_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"client_id": ["A valid integer is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not User.objects.filter(pk=client_id, role=User.Role.CLIENT).exists():
+            return Response(
+                {"client_id": ["Client not found."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = ClientDataSourceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(client_id=request.data.get("client_id", request.user.pk))
+        serializer.save(client_id=client_id)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 

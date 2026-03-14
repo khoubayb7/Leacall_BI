@@ -4,7 +4,7 @@ Extract — pull raw records from a client's LeaCall server via REST API.
 import logging
 from typing import Any, Dict, List
 
-from user.leacall_client import LeacallClient
+from user.leacall_client import LeacallBIClient
 
 from .models import ETLRawRecord, ETLRun, ClientDataSource
 
@@ -21,7 +21,7 @@ class Extractor:
         self.data_source = data_source
         self.run = run
         self.raw_data: List[Dict[str, Any]] = []
-        self._client = LeacallClient(data_source.client)
+        self._client = LeacallBIClient(data_source.client)
 
     def extract(self) -> List[Dict[str, Any]]:
         """

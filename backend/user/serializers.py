@@ -67,7 +67,7 @@ class ClientCreateSerializer(ClientModulesValidationMixin, serializers.ModelSeri
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "password", "leacall_tenancy_url", "enabled_modules"]
+        fields = ["id", "username", "email", "password", "leacall_tenancy_url", "leacall_bi_api_key", "enabled_modules"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
@@ -81,14 +81,14 @@ class ClientCreateSerializer(ClientModulesValidationMixin, serializers.ModelSeri
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "email", "role", "leacall_tenancy_url", "enabled_modules", "is_active", "date_joined"]
+        fields = ["id", "username", "email", "role", "leacall_tenancy_url", "leacall_bi_api_key", "enabled_modules", "is_active", "date_joined"]
         read_only_fields = fields
 
 
 class ClientUpdateSerializer(ClientModulesValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["username", "email", "leacall_tenancy_url", "enabled_modules", "is_active"]
+        fields = ["username", "email", "leacall_tenancy_url", "leacall_bi_api_key", "enabled_modules", "is_active"]
 
 
 class AdminSerializer(serializers.ModelSerializer):
