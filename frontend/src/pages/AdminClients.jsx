@@ -11,6 +11,7 @@ const initialForm = {
   email: "",
   password: "",
   leacall_tenancy_url: "",
+  leacall_bi_api_key: "",
   enabled_modules: ["dashboard"],
 };
 
@@ -18,6 +19,7 @@ const initialEditForm = {
   username: "",
   email: "",
   leacall_tenancy_url: "",
+  leacall_bi_api_key: "",
   is_active: true,
   enabled_modules: ["dashboard"],
 };
@@ -134,6 +136,7 @@ export default function AdminClients() {
       username: client.username || "",
       email: client.email || "",
       leacall_tenancy_url: client.leacall_tenancy_url || "",
+      leacall_bi_api_key: client.leacall_bi_api_key || "",
       is_active: Boolean(client.is_active),
       enabled_modules: normalizeEnabledModules(client.enabled_modules),
     });
@@ -243,6 +246,14 @@ export default function AdminClients() {
             onChange={onCreateChange}
             placeholder="https://tenant.leacall.com"
           />
+          <FormInput
+            label="BI API Key"
+            name="leacall_bi_api_key"
+            value={form.leacall_bi_api_key}
+            onChange={onCreateChange}
+            placeholder="BI API key (X-BI-API-Key)"
+            required={false}
+          />
 
           <div className="full-row">
             <p className="module-pick-title">Enabled modules</p>
@@ -335,6 +346,14 @@ export default function AdminClients() {
               value={editForm.leacall_tenancy_url}
               onChange={onEditChange}
               placeholder="https://tenant.leacall.com"
+              required={false}
+            />
+            <FormInput
+              label="BI API Key"
+              name="leacall_bi_api_key"
+              value={editForm.leacall_bi_api_key}
+              onChange={onEditChange}
+              placeholder="BI API key (X-BI-API-Key)"
               required={false}
             />
 

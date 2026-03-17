@@ -25,8 +25,10 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "ETL",
     "user",
     "agent",
+    "agentKPIS",
 ]
 
 MIDDLEWARE = [
@@ -103,3 +105,40 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ── LLM Agent ─────────────────────────────────────────────────────────────────
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+LEACALL_BI_API_KEY = os.getenv("LEACALL_BI_API_KEY", "")
+
+# Directory where the agent writes generated ETL files
+WORKSPACE_DIR = BASE_DIR / "workspace"
+
+# Max LLM retries per ETL step before giving up
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+
+# Canonical ETL reference files used as code templates by the agent
+ETL_EXTRACT_REF = str(BASE_DIR / "ETL" / "extractor.py")
+ETL_TRANSFORM_REF = str(BASE_DIR / "ETL" / "transformer.py")
+ETL_LOAD_REF = str(BASE_DIR / "ETL" / "loader.py")
+
+# ── Celery ────────────────────────────────────────────────────────────────────
+CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+# Fail fast if Redis is unreachable — prevents blocking the HTTP request
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "socket_timeout": 2,
+    "socket_connect_timeout": 2,
+}
+CELERY_BROKER_CONNECTION_RETRY = False
+
+# ── Email ─────────────────────────────────────────────────────────────────────
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@bisystem.com")

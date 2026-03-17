@@ -25,6 +25,20 @@ class CustomUser(AbstractUser):
         help_text="URL de la tenancy leacall du client."
     )
 
+    leacall_api_key = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        help_text="Clé API pour s'authentifier auprès du serveur LeaCall.",
+    )
+
+    leacall_bi_api_key = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        help_text="BI API key (X-BI-API-Key) for read-only BI endpoints on the LeaCall server.",
+    )
+
     # List of enabled modules in the client UI.
     enabled_modules = models.JSONField(
         default=default_client_modules,

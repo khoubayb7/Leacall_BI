@@ -1,6 +1,11 @@
-﻿from django.contrib.auth import get_user_model
+﻿import logging
+import threading
+
+from django.contrib.auth import get_user_model
 
 from rest_framework import status
+
+logger = logging.getLogger(__name__)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,6 +16,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .permissions import IsAdmin, IsClient
 from .serializers import AdminSerializer, ClientCreateSerializer, ClientSerializer, ClientUpdateSerializer
+from .tasks import send_welcome_email
 
 User = get_user_model()
 
@@ -80,7 +86,16 @@ class ClientListCreateView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        raw_password = request.data.get("password", "")
         client = serializer.save()
+
+        def _send():
+            try:
+                send_welcome_email.apply_async(args=[client.id, raw_password], retry=False)
+            except Exception:
+                logger.warning("Could not enqueue welcome email for client %s (is Celery/Redis running?)", client.id)
+
+        threading.Thread(target=_send, daemon=True).start()
         return Response(ClientSerializer(client).data, status=status.HTTP_201_CREATED)
 
 
