@@ -4,6 +4,7 @@ import AdminClients from "./pages/AdminClients";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminLayout from "./pages/AdminLayout";
 import ETLPipeline from "./pages/ETLPipeline";
+import KPIDashboard from "./pages/KPIDashboard";
 import ClientLayout from "./pages/ClientLayout";
 import ClientPlatform from "./pages/ClientPlatform";
 import Login from "./pages/Login";
@@ -94,6 +95,7 @@ export default function AppRouter() {
         <Route path="create-client" element={<AdminClients />} />
         <Route path="clients" element={<Navigate to="/admin/create-client" replace />} />
         <Route path="etl-pipeline" element={<ETLPipeline />} />
+        <Route path="kpi-dashboard" element={<KPIDashboard />} />
         <Route path="module-3" element={<ModulePlaceholder title="Button 3" description="This is a reserved admin module." />} />
         <Route path="module-4" element={<ModulePlaceholder title="Button 4" description="This module can host your admin settings or integrations." />} />
         <Route path="module-5" element={<ModulePlaceholder title="Button 5" description="This section can display admin notifications and alerts." />} />

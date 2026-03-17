@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "ETL",
     "user",
     "agent",
+    "agentKPIS",
 ]
 
 MIDDLEWARE = [
