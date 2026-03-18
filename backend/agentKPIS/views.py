@@ -118,6 +118,7 @@ class GenerateKPIAPIView(View):
             campaign_id=resolved["campaign_id"],
             campaign_name=resolved["campaign_name"],
             campaign_type=campaign_type or resolved["campaign_type"],
+            client_id=resolved["client_id"],
             force_regenerate=force_regenerate,
         )
 
@@ -155,6 +156,7 @@ class GenerateKPIAPIView(View):
                 "campaign_id": ds.campaign_id,
                 "campaign_name": ds.campaign_name,
                 "campaign_type": ds.campaign_type,
+                "client_id": ds.client_id,
             }
 
         ds = qs.filter(campaign_id=campaign_id).first()
@@ -171,36 +173,11 @@ class GenerateKPIAPIView(View):
             "campaign_id": ds.campaign_id,
             "campaign_name": ds.campaign_name,
             "campaign_type": ds.campaign_type,
+            "client_id": ds.client_id,
         }
 
     @staticmethod
-    def _queue_task(campaign_id: str, campaign_name: str, campaign_type: str, force_regenerate: bool):
-        existing_file_path = "" if force_regenerate else _latest_file_path(campaign_id, campaign_name)
-        if existing_file_path:
-            record = KPIExecution.objects.create(
-                ask="AUTO_INTERNAL_PROMPT",
-                campaign_id=campaign_id,
-                campaign_name=campaign_name,
-                campaign_type=campaign_type,
-                file_path=existing_file_path,
-                status="queued",
-            )
-            execute_kpi_file(record.id)
-            record.refresh_from_db()
-            return JsonResponse(
-                {
-                    "status": record.status,
-                    "execution_id": record.id,
-                    "task_id": "",
-                    "campaign_id": campaign_id,
-                    "campaign_name": campaign_name,
-                    "campaign_type": campaign_type,
-                    "execution": _execution_to_dict(record),
-                    "refresh_mode": "reused_file",
-                },
-                status=200,
-            )
-
+    def _queue_task(campaign_id: str, campaign_name: str, campaign_type: str, client_id: int, force_regenerate: bool):
         record = KPIExecution.objects.create(
             ask="AUTO_INTERNAL_PROMPT",
             campaign_id=campaign_id,
@@ -217,6 +194,7 @@ class GenerateKPIAPIView(View):
                     "campaign_id": campaign_id,
                     "campaign_name": campaign_name,
                     "campaign_type": campaign_type,
+                    "client_id": client_id,
                     "force_regenerate": force_regenerate,
                 }
             ]
@@ -314,6 +292,7 @@ class CampaignOptionsAPIView(View):
         rows = qs.order_by("campaign_name", "campaign_id")
         options = [
             {
+                "data_source_id": row.id,
                 "campaign_name": row.campaign_name or row.campaign_id,
                 "campaign_id": row.campaign_id,
                 "campaign_type": row.campaign_type,

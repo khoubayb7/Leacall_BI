@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AdminClients from "./pages/AdminClients";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminLayout from "./pages/AdminLayout";
+import ClientETLPipeline from "./pages/ClientETLPipeline";
+import ClientKPIDashboard from "./pages/ClientKPIDashboard";
 import ETLPipeline from "./pages/ETLPipeline";
 import KPIDashboard from "./pages/KPIDashboard";
 import ClientLayout from "./pages/ClientLayout";
@@ -112,10 +114,8 @@ export default function AppRouter() {
         <Route index element={<ClientEntryRoute />} />
         <Route path="dashboard" element={<ClientModuleGuard moduleKey="dashboard"><ClientPlatform /></ClientModuleGuard>} />
         <Route path="platform" element={<ClientEntryRoute />} />
-        <Route path="my-calls" element={<ClientModuleGuard moduleKey="my_calls"><ModulePlaceholder title="My Calls" description="Use this client module to track calls assigned to your account." /></ClientModuleGuard>} />
-        <Route path="reports" element={<ClientModuleGuard moduleKey="reports"><ModulePlaceholder title="Reports" description="This client report area can show your conversion and pipeline metrics." /></ClientModuleGuard>} />
-        <Route path="tasks" element={<ClientModuleGuard moduleKey="tasks"><ModulePlaceholder title="Tasks" description="This task board can list your daily client actions." /></ClientModuleGuard>} />
-        <Route path="support" element={<ClientModuleGuard moduleKey="support"><ModulePlaceholder title="Support" description="This support module can display tickets and contact channels." /></ClientModuleGuard>} />
+        <Route path="etl-pipeline" element={<ClientModuleGuard moduleKey="etl_pipeline"><ClientETLPipeline /></ClientModuleGuard>} />
+        <Route path="kpi-dashboard" element={<ClientModuleGuard moduleKey="kpi_dashboard"><ClientKPIDashboard /></ClientModuleGuard>} />
       </Route>
 
       <Route

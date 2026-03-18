@@ -16,4 +16,5 @@ urlpatterns = [
 
     # Trigger sync
     path("sync/", views.ETLSyncView.as_view(), name="etl_sync"),
+    path("sync-campaigns/", views.CampaignSyncView.as_view(), name="sync_campaigns"),
 ]

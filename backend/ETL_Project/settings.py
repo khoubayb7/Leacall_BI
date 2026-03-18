@@ -134,6 +134,10 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 }
 CELERY_BROKER_CONNECTION_RETRY = False
 
+# Retry policy for stale pending ETL runs.
+ETL_PENDING_REQUEUE_AFTER_SECONDS = int(os.getenv("ETL_PENDING_REQUEUE_AFTER_SECONDS", "45"))
+ETL_PENDING_MAX_QUEUE_RETRIES = int(os.getenv("ETL_PENDING_MAX_QUEUE_RETRIES", "2"))
+
 # ── Email ─────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")

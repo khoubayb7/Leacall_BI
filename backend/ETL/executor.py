@@ -19,13 +19,19 @@ class ETLPipelineExecutor:
     def __init__(self, data_source: ClientDataSource):
         self.data_source = data_source
 
-    def execute(self) -> ETLRun:
-        run = ETLRun.objects.create(
-            data_source=self.data_source,
-            client=self.data_source.client,
-            status=ETLRun.Status.RUNNING,
-            started_at=timezone.now(),
-        )
+    def execute(self, run: ETLRun | None = None) -> ETLRun:
+        if run is None:
+            run = ETLRun.objects.create(
+                data_source=self.data_source,
+                client=self.data_source.client,
+                status=ETLRun.Status.RUNNING,
+                started_at=timezone.now(),
+            )
+        else:
+            run.status = ETLRun.Status.RUNNING
+            run.started_at = run.started_at or timezone.now()
+            run.error_message = ""
+            run.save(update_fields=["status", "started_at", "error_message"])
 
         try:
             # ── Extract ───────────────────────────────────────────────

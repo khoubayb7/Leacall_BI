@@ -5,12 +5,14 @@ Because each client / campaign has different fields, transformation
 is *dynamic*: we strip whitespace on strings, drop empty-ID rows,
 apply an optional field_mapping, and return clean dicts.
 """
+import json
 import logging
 from typing import Any, Dict, List
 
 from .models import ClientDataSource, ETLRun
 
 logger = logging.getLogger(__name__)
+TYPE_META_KEY = "__etl_types__"
 
 
 class Transformer:
@@ -40,7 +42,8 @@ class Transformer:
         seen_ids: set = set()
 
         for row in self.data:
-            cleaned = self._clean_row(row)
+            restored = self._restore_types(row)
+            cleaned = self._clean_row(restored)
 
             # Every record must have a non-empty unique ID
             record_id = str(cleaned.get(self.record_id_field, "")).strip()
@@ -70,14 +73,52 @@ class Transformer:
         return self.transformed
 
     @staticmethod
+    def _parse_value(raw_value: Any, type_name: str) -> Any:
+        if raw_value is None:
+            return None
+
+        value = raw_value if isinstance(raw_value, str) else str(raw_value)
+
+        if type_name == "none":
+            return None
+        if type_name == "bool":
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        if type_name == "int":
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return value
+        if type_name == "float":
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return value
+        if type_name in {"dict", "list"}:
+            try:
+                return json.loads(value)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return value
+        return value
+
+    def _restore_types(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        type_map = row.get(TYPE_META_KEY, {}) if isinstance(row, dict) else {}
+        restored: Dict[str, Any] = {}
+
+        for key, value in row.items():
+            if key == TYPE_META_KEY:
+                continue
+            type_name = type_map.get(key, "str") if isinstance(type_map, dict) else "str"
+            restored[key] = self._parse_value(value, type_name)
+
+        return restored
+
+    @staticmethod
     def _clean_row(row: Dict[str, Any]) -> Dict[str, Any]:
-        """Strip strings, convert None → ''."""
+        """Strip strings while keeping non-string values in their restored type."""
         cleaned: Dict[str, Any] = {}
         for key, value in row.items():
             if isinstance(value, str):
                 cleaned[key] = value.strip()
-            elif value is None:
-                cleaned[key] = ""
             else:
                 cleaned[key] = value
         return cleaned

@@ -8,7 +8,12 @@ from langgraph.prebuilt import create_react_agent
 from agentKPIS.tools import get_kpi_tools
 
 
-def generate_kpi_file(campaign_id: str, campaign_name: str = "", campaign_type: str = "general") -> dict:
+def generate_kpi_file(
+    campaign_id: str,
+    campaign_name: str = "",
+    campaign_type: str = "general",
+    dataset_file_path: str = "",
+) -> dict:
     """
     Generate one KPI python file using a simple ReAct agent.
 
@@ -58,15 +63,21 @@ def generate_kpi_file(campaign_id: str, campaign_name: str = "", campaign_type: 
         f"- campaign_id: {campaign_id}\n"
         f"- campaign_name: {campaign_name or 'N/A'}\n"
         f"- campaign_type: {campaign_type}\n\n"
+        "Data source for KPI computation (mandatory):\n"
+        f"- dataset_file_path: {dataset_file_path}\n"
+        "- This JSON file contains ETL-loaded records from CampaignRecord and latest ETL run metadata.\n"
+        "- You MUST compute KPIs strictly from this file.\n"
+        "- Do NOT call external APIs or database in the generated script.\n\n"
         "Output location:\n"
         f"Write the file exactly at: {relative_path}\n\n"
         "Implementation requirements:\n"
         "1) Output must be valid Python code only (no markdown, no explanations).\n"
         "2) Use only Python standard library modules.\n"
-        "3) Define a function generate_kpis() that returns a dictionary of KPI values.\n"
-        "4) Include if __name__ == '__main__' and print JSON output only.\n"
-        "5) Keep implementation concise, readable, and deterministic.\n"
-        "6) Follow clean naming and professional code style.\n\n"
+        "3) Define a function load_dataset() that reads dataset_file_path.\n"
+        "4) Define generate_kpis() that returns KPI dictionary computed from dataset['records'].\n"
+        "5) Include if __name__ == '__main__' and print JSON output only.\n"
+        "6) Keep implementation concise, readable, and deterministic.\n"
+        "7) Follow clean naming and professional code style.\n\n"
         "Final step:\n"
         "After writing the file, confirm completion."
     )

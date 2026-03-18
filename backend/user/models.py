@@ -3,7 +3,7 @@ from django.db import models
 
 
 def default_client_modules():
-    return ["dashboard"]
+    return ["dashboard", "etl_pipeline", "kpi_dashboard"]
 
 
 class CustomUser(AbstractUser):

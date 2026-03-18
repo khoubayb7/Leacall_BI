@@ -94,6 +94,15 @@ class ClientListCreateView(APIView):
                 send_welcome_email.apply_async(args=[client.id, raw_password], retry=False)
             except Exception:
                 logger.warning("Could not enqueue welcome email for client %s (is Celery/Redis running?)", client.id)
+            
+            # Queue campaign discovery if BI API key is provided
+            if client.leacall_bi_api_key or client.leacall_api_key:
+                try:
+                    from .tasks import discover_client_campaigns
+                    discover_client_campaigns.apply_async(args=[client.id], retry=False)
+                    logger.info("Queued campaign discovery for client %s", client.id)
+                except Exception as e:
+                    logger.warning("Could not enqueue campaign discovery for client %s: %s", client.id, e)
 
         threading.Thread(target=_send, daemon=True).start()
         return Response(ClientSerializer(client).data, status=status.HTTP_201_CREATED)
@@ -139,4 +148,11 @@ class ClientPlatformView(APIView):
     permission_classes = [IsAuthenticated, IsClient]
 
     def get(self, request):
+        # Auto-sync campaigns on platform access
+        try:
+            from .tasks import discover_client_campaigns
+            discover_client_campaigns.apply_async(args=[request.user.id], retry=False)
+        except Exception as e:
+            logger.warning("Could not queue campaign sync for client %s: %s", request.user.id, e)
+        
         return Response(ClientSerializer(request.user).data, status=status.HTTP_200_OK)

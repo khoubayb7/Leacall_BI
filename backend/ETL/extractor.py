@@ -1,6 +1,7 @@
 """
 Extract — pull raw records from a client's LeaCall server via REST API.
 """
+import json
 import logging
 from typing import Any, Dict, List
 
@@ -9,6 +10,7 @@ from user.leacall_client import LeacallBIClient
 from .models import ETLRawRecord, ETLRun, ClientDataSource
 
 logger = logging.getLogger(__name__)
+TYPE_META_KEY = "__etl_types__"
 
 
 class Extractor:
@@ -22,6 +24,42 @@ class Extractor:
         self.run = run
         self.raw_data: List[Dict[str, Any]] = []
         self._client = LeacallBIClient(data_source.client)
+
+    @staticmethod
+    def _type_name(value: Any) -> str:
+        if value is None:
+            return "none"
+        if isinstance(value, bool):
+            return "bool"
+        if isinstance(value, int) and not isinstance(value, bool):
+            return "int"
+        if isinstance(value, float):
+            return "float"
+        if isinstance(value, dict):
+            return "dict"
+        if isinstance(value, list):
+            return "list"
+        return "str"
+
+    @staticmethod
+    def _to_string(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, ensure_ascii=False)
+        return str(value)
+
+    def _stringify_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {}
+        type_map: Dict[str, str] = {}
+        for key, value in row.items():
+            key_str = str(key)
+            payload[key_str] = self._to_string(value)
+            type_map[key_str] = self._type_name(value)
+        payload[TYPE_META_KEY] = type_map
+        return payload
 
     def extract(self) -> List[Dict[str, Any]]:
         """
@@ -42,10 +80,11 @@ class Extractor:
 
 
             if isinstance(response, list):
-                self.raw_data.extend(response)
+                self.raw_data.extend([self._stringify_row(row) for row in response if isinstance(row, dict)])
                 page_url = None
             elif isinstance(response, dict):
-                self.raw_data.extend(response.get("results", []))
+                results = response.get("results", [])
+                self.raw_data.extend([self._stringify_row(row) for row in results if isinstance(row, dict)])
                 page_url = response.get("next")
                 # If 'next' is a full URL, convert it to a relative path
                 if page_url and page_url.startswith("http"):
@@ -76,8 +115,9 @@ class Extractor:
     def get_info(self) -> Dict[str, Any]:
         if not self.raw_data:
             return {"source": self.data_source.get_api_endpoint(), "total_records": 0, "columns": []}
+        columns = [k for k in self.raw_data[0].keys() if k != TYPE_META_KEY]
         return {
             "source": self.data_source.get_api_endpoint(),
             "total_records": len(self.raw_data),
-            "columns": list(self.raw_data[0].keys()),
+            "columns": columns,
         }

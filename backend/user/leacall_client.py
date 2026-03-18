@@ -126,6 +126,36 @@ class LeacallBIClient:
         """GET /api/bi/campaigns/<campaign_id>/"""
         return self._request(f'/api/bi/campaigns/{campaign_id}/')
 
+    def get_campaigns(self, page=None):
+        """GET /api/bi/campaigns/?page=N"""
+        params = {'page': page} if page else None
+        return self._request('/api/bi/campaigns/', params=params)
+
+    def get_all_campaigns(self):
+        """Fetch all campaign pages from BI API."""
+        campaigns = []
+        page = None
+        while True:
+            data = self.get_campaigns(page=page)
+            if isinstance(data, dict):
+                campaigns.extend(data.get('results', []))
+                next_url = data.get('next')
+            elif isinstance(data, list):
+                campaigns.extend(data)
+                next_url = None
+            else:
+                campaigns.append(data)
+                next_url = None
+
+            if not next_url:
+                break
+
+            parsed = urlparse(next_url)
+            qs = parse_qs(parsed.query)
+            page = qs.get('page', [None])[0]
+
+        return campaigns
+
     def get_campaign_leads(self, campaign_id, page=None):
         """GET /api/bi/campaigns/<campaign_id>/leads/?page=N"""
         params = {'page': page} if page else None

@@ -1,9 +1,7 @@
 export const CLIENT_MODULE_OPTIONS = [
   { key: "dashboard", label: "Client Dashboard", route: "/client/dashboard", icon: "grid" },
-  { key: "my_calls", label: "My Calls", route: "/client/my-calls", icon: "phone" },
-  { key: "reports", label: "Reports", route: "/client/reports", icon: "chart" },
-  { key: "tasks", label: "Tasks", route: "/client/tasks", icon: "file" },
-  { key: "support", label: "Support", route: "/client/support", icon: "bell" },
+  { key: "etl_pipeline", label: "ETL Pipeline", route: "/client/etl-pipeline", icon: "chart" },
+  { key: "kpi_dashboard", label: "KPI Dashboard", route: "/client/kpi-dashboard", icon: "chart" },
 ];
 
 const CLIENT_MODULE_KEYS = new Set(CLIENT_MODULE_OPTIONS.map((module) => module.key));

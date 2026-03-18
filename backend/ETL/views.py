@@ -136,6 +136,43 @@ class ETLSyncView(APIView):
         return Response(ETLRunSerializer(run).data, status=http_status)
 
 
+class CampaignSyncView(APIView):
+    """Discover and create datasources for all campaigns from BI API."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Clients can only sync their own campaigns
+        if request.user.role == "admin":
+            # Admins can optionally sync for a specific client
+            client_id = request.data.get("client_id", request.user.id)
+            try:
+                client_id = int(client_id)
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "Invalid client_id"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            client_id = request.user.id
+
+        try:
+            from user.tasks import discover_client_campaigns
+            result = discover_client_campaigns.apply_async(args=[client_id], retry=False)
+            return Response(
+                {
+                    "message": "Campaign discovery queued",
+                    "task_id": result.id,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+
 # ── Campaign Records ──────────────────────────────────────────────────────────
 
 

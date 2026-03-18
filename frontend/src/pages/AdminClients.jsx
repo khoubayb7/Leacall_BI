@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import FormInput from "../components/ui/FormInput";
+import AlertBox from "../components/ui/AlertBox";
+import AppButton from "../components/ui/AppButton";
+import DataTable from "../components/ui/DataTable";
+import PageHeader from "../components/ui/PageHeader";
+import SurfaceCard from "../components/ui/SurfaceCard";
+import TableActions from "../components/ui/TableActions";
 import { CLIENT_MODULE_OPTIONS, getClientModuleLabel, normalizeEnabledModules } from "../constants/clientModules";
 import { logoutUser } from "../services/authService";
 import { createClient, deleteClient, getClients, updateClient } from "../services/clientService";
@@ -225,15 +231,9 @@ export default function AdminClients() {
 
   return (
     <section className="workspace-content">
-      <header className="content-header">
-        <div>
-          <p className="eyebrow">Admin Module</p>
-          <h1>Create and manage clients</h1>
-        </div>
-      </header>
+      <PageHeader eyebrow="Admin Module" title="Create and manage clients" />
 
-      <article className="surface-card">
-        <h2>Create client</h2>
+      <SurfaceCard title="Create client">
         <form className="grid-form" onSubmit={onCreateSubmit}>
           <FormInput label="Username" name="username" value={form.username} onChange={onCreateChange} placeholder="client1" />
           <FormInput label="Email" type="email" name="email" value={form.email} onChange={onCreateChange} placeholder="client@mail.com" />
@@ -271,19 +271,26 @@ export default function AdminClients() {
             </div>
           </div>
 
-          {formError ? <div className="error-box full-row">{formError}</div> : null}
-          {formSuccess ? <div className="success-box full-row">{formSuccess}</div> : null}
+          {formError ? (
+            <AlertBox className="full-row" type="error">
+              {formError}
+            </AlertBox>
+          ) : null}
+          {formSuccess ? (
+            <AlertBox className="full-row" type="success">
+              {formSuccess}
+            </AlertBox>
+          ) : null}
 
-          <button className="primary-btn full-row" type="submit" disabled={saving}>
+          <AppButton className="full-row" type="submit" disabled={saving}>
             {saving ? "Creation..." : "Creer client"}
-          </button>
+          </AppButton>
         </form>
-      </article>
+      </SurfaceCard>
 
-      <article className="surface-card">
-        <h2>Clients</h2>
-        {tableError ? <div className="error-box">{tableError}</div> : null}
-        {tableSuccess ? <div className="success-box">{tableSuccess}</div> : null}
+      <SurfaceCard title="Clients">
+        {tableError ? <AlertBox type="error">{tableError}</AlertBox> : null}
+        {tableSuccess ? <AlertBox type="success">{tableSuccess}</AlertBox> : null}
 
         {loadingList ? (
           <p>Chargement...</p>
@@ -291,46 +298,37 @@ export default function AdminClients() {
           <p>Aucun client pour le moment.</p>
         ) : (
           <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Username</th>
-                  <th>Email</th>
-                  <th>URL</th>
-                  <th>Modules</th>
-                  <th>Actif</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id}>
-                    <td>{client.id}</td>
-                    <td>{client.username}</td>
-                    <td>{client.email}</td>
-                    <td>{client.leacall_tenancy_url || "-"}</td>
-                    <td>{normalizeEnabledModules(client.enabled_modules).map(getClientModuleLabel).join(", ")}</td>
-                    <td>{client.is_active ? "Oui" : "Non"}</td>
-                    <td>
-                      <div className="table-actions">
-                        <button className="secondary-btn compact" type="button" onClick={() => startEditing(client)}>
-                          Update
-                        </button>
-                        <button
-                          className="danger-btn compact"
-                          type="button"
-                          disabled={deletingClientId === client.id}
-                          onClick={() => onDeleteClient(client)}
-                        >
-                          {deletingClientId === client.id ? "Deleting..." : "Delete"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable
+              rows={clients}
+              columns={["ID", "Username", "Email", "URL", "Modules", "Actif", "Actions"]}
+              getRowKey={(client) => client.id}
+              renderRow={(client) => (
+                <>
+                  <td>{client.id}</td>
+                  <td>{client.username}</td>
+                  <td>{client.email}</td>
+                  <td>{client.leacall_tenancy_url || "-"}</td>
+                  <td>{normalizeEnabledModules(client.enabled_modules).map(getClientModuleLabel).join(", ")}</td>
+                  <td>{client.is_active ? "Oui" : "Non"}</td>
+                  <td>
+                    <TableActions>
+                      <AppButton variant="secondary" compact type="button" onClick={() => startEditing(client)}>
+                        Update
+                      </AppButton>
+                      <AppButton
+                        variant="danger"
+                        compact
+                        type="button"
+                        disabled={deletingClientId === client.id}
+                        onClick={() => onDeleteClient(client)}
+                      >
+                        {deletingClientId === client.id ? "Deleting..." : "Delete"}
+                      </AppButton>
+                    </TableActions>
+                  </td>
+                </>
+              )}
+            />
           </div>
         )}
 
@@ -382,16 +380,16 @@ export default function AdminClients() {
             </div>
 
             <div className="full-row edit-form-actions">
-              <button className="primary-btn" type="submit" disabled={updating}>
+              <AppButton type="submit" disabled={updating}>
                 {updating ? "Updating..." : "Update client"}
-              </button>
-              <button className="secondary-btn compact" type="button" onClick={cancelEditing}>
+              </AppButton>
+              <AppButton variant="secondary" compact type="button" onClick={cancelEditing}>
                 Cancel
-              </button>
+              </AppButton>
             </div>
           </form>
         ) : null}
-      </article>
+      </SurfaceCard>
     </section>
   );
 }

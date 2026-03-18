@@ -30,7 +30,11 @@ class Loader:
         record_id_field = self.data_source.record_id_field or "id"
 
         for row in records:
-            leacall_id = str(row.get(record_id_field, ""))
+            raw_id = row.get(record_id_field)
+            if raw_id is None:
+                continue
+
+            leacall_id = str(raw_id).strip()
             if not leacall_id:
                 continue
 

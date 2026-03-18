@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import AlertBox from "../components/ui/AlertBox";
+import AppButton from "../components/ui/AppButton";
+import PageHeader from "../components/ui/PageHeader";
+import StatCard from "../components/ui/StatCard";
+import SurfaceCard from "../components/ui/SurfaceCard";
 import { logoutUser } from "../services/authService";
 import { getClients } from "../services/clientService";
 
@@ -42,37 +47,27 @@ export default function AdminDashboard() {
 
   return (
     <section className="workspace-content">
-      <header className="content-header">
-        <div>
-          <p className="eyebrow">Admin Area</p>
-          <h1>Dashboard overview</h1>
-        </div>
-        <button className="secondary-btn compact" onClick={() => navigate("/admin/create-client")} type="button">
-          Create Client
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="Admin Area"
+        title="Dashboard overview"
+        action={(
+          <AppButton variant="secondary" compact onClick={() => navigate("/admin/create-client")} type="button">
+            Create Client
+          </AppButton>
+        )}
+      />
 
-      {error ? <div className="error-box">{error}</div> : null}
+      {error ? <AlertBox type="error">{error}</AlertBox> : null}
 
       <div className="stats-grid">
-        <article className="stats-card">
-          <p>Total clients</p>
-          <strong>{loading ? "..." : stats.total}</strong>
-        </article>
-        <article className="stats-card">
-          <p>Active clients</p>
-          <strong>{loading ? "..." : stats.active}</strong>
-        </article>
-        <article className="stats-card">
-          <p>Inactive clients</p>
-          <strong>{loading ? "..." : stats.inactive}</strong>
-        </article>
+        <StatCard label="Total clients" value={loading ? "..." : stats.total} />
+        <StatCard label="Active clients" value={loading ? "..." : stats.active} />
+        <StatCard label="Inactive clients" value={loading ? "..." : stats.inactive} />
       </div>
 
-      <article className="surface-card">
-        <h2>Quick actions</h2>
+      <SurfaceCard title="Quick actions">
         <p>Use the left sidebar to move between admin modules. `Create Clients` opens the full creation form.</p>
-      </article>
+      </SurfaceCard>
     </section>
   );
 }
