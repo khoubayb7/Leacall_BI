@@ -1,3 +1,2 @@
-from .celery import app as celery_app
-
+# Celery app is loaded on demand when needed
 __all__ = ("celery_app",)

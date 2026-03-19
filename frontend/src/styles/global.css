@@ -436,6 +436,85 @@ th {
   color: #b5cdea;
 }
 
+/* KPI Dashboard Styles */
+.kpi-section {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.kpi-section h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.kpi-section .stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.stats-card .card-label {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.stats-card .card-value {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.8rem;
+  font-family: "Sora", "Manrope", sans-serif;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.stats-card .card-desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
+.stats-card.alert {
+  border-color: rgba(252, 165, 165, 0.3);
+  background: linear-gradient(180deg, rgba(77, 17, 17, 0.5), rgba(55, 12, 12, 0.5));
+}
+
+.stats-card.alert .card-value {
+  color: var(--danger);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(46, 108, 168, 0.4);
+  color: #d6e7ff;
+}
+
+.badge.active {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-line);
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+/* Tables in KPI cards */
+.surface-card table tbody tr:hover {
+  background: rgba(3, 212, 255, 0.05);
+}
+
+.surface-card table td:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;
