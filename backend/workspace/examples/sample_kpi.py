@@ -89,60 +89,6 @@ class ClientSideKPIs:
 
 
 
-@dataclass
-class PlatformHealthKPI:
-    """Platform Health & Usage Metrics"""
-    total_active_clients: int = 0
-    total_calls_processed_global: int = 0
-    platform_uptime_percentage: float = 99.9
-    api_response_time_ms: float = 0.0  # average
-    api_error_rate: float = 0.0  # percentage
-    storage_usage_per_client: Dict[str, float] = field(default_factory=dict)  # client_id -> GB
-
-
-@dataclass
-class ClientActivityKPI:
-    """Client Activity Analytics"""
-    most_active_clients: List[Dict[str, Any]] = field(default_factory=list)  # client_id, call_volume
-    client_growth_trends: Dict[str, int] = field(default_factory=dict)  # date -> new clients
-    churn_rate: float = 0.0  # percentage
-    avg_calls_per_client: float = 0.0
-    client_engagement_score: Dict[str, float] = field(default_factory=dict)  # client_id -> score
-    revenue_per_client: Dict[str, float] = field(default_factory=dict)  # client_id -> revenue
-
-
-@dataclass
-class QualityMonitoringKPI:
-    """Quality Monitoring Metrics"""
-    failed_call_analysis: Dict[str, int] = field(default_factory=dict)  # failure_type -> count
-    technical_failures: int = 0
-    dropped_calls: int = 0
-    root_causes: List[Dict[str, Any]] = field(default_factory=list)
-
-
-@dataclass
-class ResourceManagementKPI:
-    """Resource Management Metrics"""
-    infrastructure_costs_total: float = 0.0
-    infrastructure_cost_per_client: Dict[str, float] = field(default_factory=dict)
-    cost_per_call: float = 0.0
-    compute_usage_cpu_percent: float = 0.0
-    compute_usage_memory_percent: float = 0.0
-    storage_growth_rate_percent: float = 0.0
-    storage_total_gb: float = 0.0
-
-
-@dataclass
-class AnomalyDetectionKPI:
-    """Anomaly Detection & Alerts"""
-    unusual_call_volume_spikes: List[Dict[str, Any]] = field(default_factory=list)
-    conversion_rate_drops: List[Dict[str, Any]] = field(default_factory=list)
-    security_anomalies: List[Dict[str, Any]] = field(default_factory=list)
-    sla_breach_warnings: List[Dict[str, Any]] = field(default_factory=list)
-    alerts_triggered: int = 0
-
-
-
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
@@ -513,9 +459,3 @@ if __name__ == "__main__":
     print("=" * 80)
     client_kpis = generate_client_side_kpis()
     print(json.dumps(kpis_to_dict(client_kpis), indent=2))
-    
-    print("\n" + "=" * 80)
-    print("ADMINISTRATION-SIDE KPIs")
-    print("=" * 80)
-    admin_kpis = generate_admin_side_kpis()
-    print(json.dumps(kpis_to_dict(admin_kpis), indent=2))
