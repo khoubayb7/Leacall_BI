@@ -1,5 +1,4 @@
 from pathlib import Path
-from uuid import uuid4
 
 from django.conf import settings
 from langchain_openai import ChatOpenAI
@@ -9,6 +8,7 @@ from agentKPIS.tools import get_kpi_tools
 
 
 def generate_kpi_file(
+    user_id: int,
     campaign_id: str,
     campaign_name: str = "",
     campaign_type: str = "general",
@@ -19,6 +19,9 @@ def generate_kpi_file(
 
     The agent writes a file under workspace/kpi_output and can also execute files
     through tools if it wants to self-check.
+
+    File naming is deterministic: kpi_<user_id>_<campaign_id>.py
+    so each refresh replaces the same logical artifact.
     """
 
     workspace_dir = Path(settings.WORKSPACE_DIR)
@@ -32,12 +35,11 @@ def generate_kpi_file(
     except OSError as exc:
         reference_code = f"# Failed to read reference file: {reference_path}\n# {type(exc).__name__}: {exc}"
 
-    run_id = uuid4().hex[:10]
-
+    # Use stable filenames to avoid accumulating random-suffix KPI files.
     # We pass a relative path because file tools are rooted at WORKSPACE_DIR.
     safe_campaign_id = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in campaign_id)
-    relative_path = f"kpi_output/kpi_{safe_campaign_id}_{run_id}.py"
-    absolute_path = output_dir / f"kpi_{safe_campaign_id}_{run_id}.py"
+    relative_path = f"kpi_output/kpi_{user_id}_{safe_campaign_id}.py"
+    absolute_path = output_dir / f"kpi_{user_id}_{safe_campaign_id}.py"
 
     llm = ChatOpenAI(
         model=settings.OPENAI_MODEL,

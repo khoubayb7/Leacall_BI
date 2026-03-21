@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ETL.models import ClientDataSource
+from ETL.tasks import _cleanup_existing_etl_outputs
 from agent.graph import build_graph
 
 
@@ -78,7 +79,12 @@ class GenerateETLView(APIView):
         steps: list = request.data.get("steps") or ["E", "T", "L"]
         user_id = str(data_source.client.pk)
         campaign_id = str(data_source.campaign_id)
-        output_dir = str(settings.WORKSPACE_DIR)
+        output_dir = str(Path(settings.WORKSPACE_DIR) / "etl_output")
+        output_dir_path = Path(output_dir)
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+
+        # Replace behavior: remove previous artifacts before creating fresh files.
+        _cleanup_existing_etl_outputs(output_dir_path, user_id=user_id, campaign_id=campaign_id)
 
         task: str = request.data.get("task") or (
             f"Generate an ETL pipeline for client '{data_source.client.username}', "

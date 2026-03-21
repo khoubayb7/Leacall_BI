@@ -1,5 +1,5 @@
-from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +10,7 @@ from user.permissions import IsAdmin, IsClient
 
 from .executor import ETLPipelineExecutor
 from .models import CampaignRecord, ClientDataSource, ETLRun
+from .tasks import refresh_campaign_etl_and_schema
 from .serializers import (
     CampaignRecordSerializer,
     ClientDataSourceSerializer,
@@ -125,15 +126,22 @@ class ETLSyncView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        executor = ETLPipelineExecutor(data_source=ds)
-        run = executor.execute()
+        # Use ETL task helper so each refresh also replaces/regenerates E/T/L files.
+        refresh = refresh_campaign_etl_and_schema(ds)
+        run = ETLRun.objects.filter(pk=refresh.get("run_id")).first() if refresh.get("run_id") else None
 
-        http_status = (
-            status.HTTP_201_CREATED
-            if run.status == ETLRun.Status.SUCCESS
-            else status.HTTP_400_BAD_REQUEST
-        )
-        return Response(ETLRunSerializer(run).data, status=http_status)
+        if run is None:
+            return Response(
+                {"detail": refresh.get("error", "ETL refresh failed")},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        if refresh.get("ok"):
+            return Response(ETLRunSerializer(run).data, status=status.HTTP_201_CREATED)
+
+        payload = ETLRunSerializer(run).data
+        payload["detail"] = refresh.get("error") or run.error_message or "ETL refresh failed"
+        return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CampaignSyncView(APIView):

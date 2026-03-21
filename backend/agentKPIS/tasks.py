@@ -1,5 +1,5 @@
 from pathlib import Path
-from uuid import uuid4
+import hashlib
 import json
 
 from celery import shared_task
@@ -9,66 +9,82 @@ from django.utils import timezone
 from agentKPIS.executorKPI import execute_kpi_file
 from agentKPIS.models import KPIExecution
 from agentKPIS.react_agent import generate_kpi_file
-from ETL.models import CampaignRecord, ClientDataSource, ETLRun
+from ETL.models import ClientDataSource
+from ETL.tasks import build_loaded_dataset_snapshot, _safe_token, _columns_signature
 
 
-def _write_fallback_kpi_file(campaign_id: str, campaign_name: str, campaign_type: str, dataset_file_path: str) -> str:
+def _write_fallback_kpi_file(
+    user_id: int,
+    campaign_id: str,
+    campaign_name: str,
+    campaign_type: str,
+    dataset_file_path: str,
+) -> str:
+    """Create a deterministic fallback KPI file when LLM generation fails."""
     output_dir = Path(settings.WORKSPACE_DIR) / "kpi_output"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_campaign_id = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in campaign_id)
-    file_path = output_dir / f"kpi_{safe_campaign_id}_{uuid4().hex[:8]}_fallback.py"
+    safe_campaign_id = _safe_token(campaign_id)
+    file_path = output_dir / f"kpi_{user_id}_{safe_campaign_id}.py"
     code = f'''import json\nfrom datetime import datetime, timezone\n\n\ndef _load_dataset():\n    with open({dataset_file_path!r}, "r", encoding="utf-8") as fp:\n        return json.load(fp)\n\n\ndef generate_kpis():\n    dataset = _load_dataset()\n    records = dataset.get("records", [])\n    latest_run = dataset.get("latest_success_run") or {{}}\n\n    return {{\n        "campaign_id": {campaign_id!r},\n        "campaign_name": {campaign_name!r},\n        "campaign_type": {campaign_type!r},\n        "generated_at": datetime.now(timezone.utc).isoformat(),\n        "status": "fallback_template",\n        "records_count": len(records),\n        "latest_loaded_count": latest_run.get("loaded_count", 0),\n        "sample_fields": sorted(list(records[0].keys())) if records else [],\n    }}\n\n\nif __name__ == "__main__":\n    print(json.dumps(generate_kpis()))\n'''
     file_path.write_text(code, encoding="utf-8")
     return str(file_path.resolve())
 
 
-def _build_loaded_dataset_snapshot(client_id: int, campaign_id: str, campaign_name: str) -> tuple[str, int]:
-    """
-    Build a JSON snapshot from ETL-loaded records only.
-    Returns (dataset_file_path, record_count).
-    """
-    ds = (
-        ClientDataSource.objects
-        .filter(client_id=client_id, campaign_id=campaign_id, is_active=True)
-        .order_by("-updated_at")
-        .first()
-    )
-    if ds is None:
-        raise ValueError("Active datasource not found for this client/campaign.")
+def _cleanup_kpi_outputs(user_id: int, campaign_id: str) -> None:
+    """Delete old KPI artifacts for one user/campaign before regeneration."""
+    output_dir = Path(settings.WORKSPACE_DIR) / "kpi_output"
+    if not output_dir.exists():
+        return
 
-    latest_success_run = (
-        ETLRun.objects
-        .filter(data_source=ds, status=ETLRun.Status.SUCCESS)
-        .order_by("-completed_at", "-created_at")
-        .first()
-    )
+    safe_campaign_id = _safe_token(campaign_id)
+    patterns = [
+        f"kpi_*_{safe_campaign_id}_*.py",
+        f"kpi_{safe_campaign_id}_*.py",
+        f"kpi_{user_id}_{safe_campaign_id}.py",
+    ]
+    for pattern in patterns:
+        for file_path in output_dir.glob(pattern):
+            if file_path.is_file():
+                file_path.unlink(missing_ok=True)
 
-    records_qs = CampaignRecord.objects.filter(data_source=ds).order_by("-updated_at")
-    records = [row.data for row in records_qs[:2000]]
 
+def _kpi_schema_state_path(client_id: int, campaign_id: str) -> Path:
+    """Return KPI-local schema state path for regenerate-vs-reuse decisions."""
+    safe_campaign_id = _safe_token(campaign_id)
     output_dir = Path(settings.WORKSPACE_DIR) / "kpi_output" / "datasets"
     output_dir.mkdir(parents=True, exist_ok=True)
-    safe_campaign_id = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in campaign_id)
-    dataset_file = output_dir / f"dataset_{safe_campaign_id}_{uuid4().hex[:8]}.json"
+    return output_dir / f"kpi_schema_{client_id}_{safe_campaign_id}.json"
 
+
+def _read_previous_kpi_signature(client_id: int, campaign_id: str) -> str:
+    """Read previous KPI schema signature; empty when missing/corrupt."""
+    state_file = _kpi_schema_state_path(client_id, campaign_id)
+    if not state_file.exists():
+        return ""
+    try:
+        payload = json.loads(state_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    return str(payload.get("columns_signature", ""))
+
+
+def _write_kpi_signature_state(client_id: int, campaign_id: str, columns: list[str], signature: str) -> None:
+    """Persist KPI input schema signature to detect future KPI code invalidation."""
+    state_file = _kpi_schema_state_path(client_id, campaign_id)
     payload = {
+        "client_id": client_id,
         "campaign_id": campaign_id,
-        "campaign_name": campaign_name,
-        "generated_at": timezone.now().isoformat(),
-        "latest_success_run": {
-            "id": latest_success_run.id,
-            "status": latest_success_run.status,
-            "started_at": latest_success_run.started_at.isoformat() if latest_success_run and latest_success_run.started_at else None,
-            "completed_at": latest_success_run.completed_at.isoformat() if latest_success_run and latest_success_run.completed_at else None,
-            "raw_count": latest_success_run.raw_count if latest_success_run else 0,
-            "transformed_count": latest_success_run.transformed_count if latest_success_run else 0,
-            "loaded_count": latest_success_run.loaded_count if latest_success_run else 0,
-        } if latest_success_run else None,
-        "records": records,
+        "updated_at": timezone.now().isoformat(),
+        "columns": sorted([str(col) for col in columns]),
+        "columns_signature": signature,
     }
-    dataset_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    return str(dataset_file.resolve()), len(records)
+    state_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _kpi_file_path(user_id: int, campaign_id: str) -> Path:
+    """Return deterministic KPI file path for one user/campaign pair."""
+    return Path(settings.WORKSPACE_DIR) / "kpi_output" / f"kpi_{user_id}_{_safe_token(campaign_id)}.py"
 
 
 @shared_task(bind=True, name="agentKPIS.generate_and_execute_kpi")
@@ -87,6 +103,7 @@ def generate_and_execute_kpi_task(self, payload: dict | None = None) -> dict:
     campaign_name = str(payload.get("campaign_name", "")).strip() or campaign_id
     campaign_type = str(payload.get("campaign_type", "general")).strip() or "general"
     client_id = payload.get("client_id")
+    force_regenerate = bool(payload.get("force_regenerate", False))
 
     record = KPIExecution.objects.filter(id=record_id).first() if record_id else None
     if record is None:
@@ -105,7 +122,17 @@ def generate_and_execute_kpi_task(self, payload: dict | None = None) -> dict:
         if client_id in (None, ""):
             raise ValueError("Missing client_id in KPI payload.")
         client_id = int(client_id)
-        dataset_file_path, records_count = _build_loaded_dataset_snapshot(
+
+        data_source = (
+            ClientDataSource.objects
+            .filter(client_id=client_id, campaign_id=campaign_id, is_active=True)
+            .order_by("-updated_at")
+            .first()
+        )
+        if data_source is None:
+            raise ValueError("Active datasource not found for this client/campaign.")
+
+        dataset_file_path, records_count, columns = build_loaded_dataset_snapshot(
             client_id=client_id,
             campaign_id=campaign_id,
             campaign_name=campaign_name,
@@ -113,15 +140,36 @@ def generate_and_execute_kpi_task(self, payload: dict | None = None) -> dict:
         if records_count == 0:
             raise ValueError("No loaded records found. Run ETL first before generating KPI.")
 
-        generation = generate_kpi_file(
-            campaign_id=campaign_id,
-            campaign_name=campaign_name,
-            campaign_type=campaign_type,
-            dataset_file_path=dataset_file_path,
-        )
-        file_path = generation["file_path"]
+        # KPI task is KPI-only: schema change detection is based on KPI input dataset columns.
+        current_signature = _columns_signature(columns)
+        previous_signature = _read_previous_kpi_signature(client_id, campaign_id)
+        has_schema_change = current_signature != previous_signature
+
+        target_kpi_file = _kpi_file_path(client_id, campaign_id)
+        # Regenerate code when forced, when schema changed, or when file is missing.
+        must_regenerate = force_regenerate or has_schema_change or not target_kpi_file.exists()
+
+        if must_regenerate:
+            # Replace old KPI file with a fresh generated KPI script.
+            _cleanup_kpi_outputs(client_id, campaign_id)
+
+            generation = generate_kpi_file(
+                user_id=client_id,
+                campaign_id=campaign_id,
+                campaign_name=campaign_name,
+                campaign_type=campaign_type,
+                dataset_file_path=dataset_file_path,
+            )
+            file_path = generation["file_path"]
+        else:
+            # No schema change: reuse existing generated KPI code and only execute it.
+            file_path = str(target_kpi_file.resolve())
+
+        # Persist KPI-local schema signature after this run decision.
+        _write_kpi_signature_state(client_id, campaign_id, columns, current_signature)
     except Exception as exc:
         file_path = _write_fallback_kpi_file(
+            user_id=int(client_id) if client_id not in (None, "") else 0,
             campaign_id=campaign_id,
             campaign_name=campaign_name,
             campaign_type=campaign_type,

@@ -208,6 +208,19 @@ export default function KPIDashboardBase({ copy = {} }) {
         const execution = await getKPIExecutionByTask(taskId);
         setLatestExecution(execution);
 
+        if (
+          (execution.status === "queued" || execution.status === "running")
+          && Date.now() - startedAt > 120000
+        ) {
+          stopPolling();
+          setActiveTaskId("");
+          setMessage({
+            type: "error",
+            text: "KPI task is taking too long (over 2 minutes). Check Celery worker logs and try refreshing KPI values.",
+          });
+          return;
+        }
+
         if (execution.status === "success" || execution.status === "failed") {
           stopPolling();
           setActiveTaskId("");

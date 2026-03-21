@@ -1,0 +1,64 @@
+{
+  "campaign_id": "975a3b08-805a-4cdc-a621-3a8f18bb43ed",
+  "campaign_name": "fg",
+  "generated_at": "2026-03-20T04:25:17.978221+00:00",
+  "latest_success_run": {
+    "id": 28,
+    "status": "success",
+    "started_at": "2026-03-20T03:44:43.860936+00:00",
+    "completed_at": "2026-03-20T03:44:44.355610+00:00",
+    "raw_count": 1,
+    "transformed_count": 1,
+    "loaded_count": 1
+  },
+  "records": [
+    {
+      "id": "ea889e88-df8d-4096-ad9a-3916e33e50de",
+      "status": "completed",
+      "country": "FR",
+      "timezone": "Europe/Paris",
+      "created_at": "2026-03-15T23:18:00.249748Z",
+      "updated_at": "2026-03-15T23:22:10.754428Z",
+      "campaign_id": "975a3b08-805a-4cdc-a621-3a8f18bb43ed",
+      "name_masked": "nid***l",
+      "email_masked": "",
+      "phone_masked": "+33***8",
+      "attempt_count": 1,
+      "artifact_flags": {},
+      "callback_notes": "",
+      "source_row_ref": "row:2",
+      "last_attempt_at": "2026-03-15T23:22:10.754196Z",
+      "next_eligible_at": null,
+      "normalized_fields": {
+        "first_name": "nid***l"
+      },
+      "is_priority_callback": false,
+      "last_attempt_outcome": "completed",
+      "callback_requested_by": "",
+      "scheduled_callback_at": null
+    }
+  ],
+  "columns": [
+    "id",
+    "campaign_id",
+    "status",
+    "country",
+    "timezone",
+    "source_row_ref",
+    "attempt_count",
+    "last_attempt_at",
+    "last_attempt_outcome",
+    "next_eligible_at",
+    "is_priority_callback",
+    "scheduled_callback_at",
+    "callback_requested_by",
+    "callback_notes",
+    "artifact_flags",
+    "created_at",
+    "updated_at",
+    "phone_masked",
+    "name_masked",
+    "email_masked",
+    "normalized_fields"
+  ]
+}

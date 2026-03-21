@@ -1,0 +1,73 @@
+{
+  "data_source_id": 20,
+  "campaign_id": "cc779bde-6a35-4a00-b52b-da3003ac8f5e",
+  "campaign_name": "FreePro Fibre Optique - BI Seed 2026-03-11 23:12",
+  "run_id": 30,
+  "status": "success",
+  "raw_count": 100,
+  "transformed_count": 100,
+  "loaded_count": 100,
+  "error_message": "",
+  "stats": {
+    "extract": {
+      "source": "/api/bi/campaigns/cc779bde-6a35-4a00-b52b-da3003ac8f5e/leads/",
+      "total_records": 100,
+      "columns": [
+        "id",
+        "campaign_id",
+        "status",
+        "country",
+        "timezone",
+        "source_row_ref",
+        "attempt_count",
+        "last_attempt_at",
+        "last_attempt_outcome",
+        "next_eligible_at",
+        "is_priority_callback",
+        "scheduled_callback_at",
+        "callback_requested_by",
+        "callback_notes",
+        "artifact_flags",
+        "created_at",
+        "updated_at",
+        "phone_masked",
+        "name_masked",
+        "email_masked",
+        "normalized_fields"
+      ]
+    },
+    "transform": {
+      "input_count": 100,
+      "output_count": 100,
+      "dropped_count": 0,
+      "fields": [
+        "id",
+        "campaign_id",
+        "status",
+        "country",
+        "timezone",
+        "source_row_ref",
+        "attempt_count",
+        "last_attempt_at",
+        "last_attempt_outcome",
+        "next_eligible_at",
+        "is_priority_callback",
+        "scheduled_callback_at",
+        "callback_requested_by",
+        "callback_notes",
+        "artifact_flags",
+        "created_at",
+        "updated_at",
+        "phone_masked",
+        "name_masked",
+        "email_masked",
+        "normalized_fields"
+      ]
+    },
+    "load": {
+      "rows_loaded": 100,
+      "created_count": 0,
+      "updated_count": 100
+    }
+  }
+}

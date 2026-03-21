@@ -1,0 +1,29 @@
+{
+  "client_id": 24,
+  "campaign_id": "cc779bde-6a35-4a00-b52b-da3003ac8f5e",
+  "updated_at": "2026-03-21T05:00:03.056286+00:00",
+  "columns": [
+    "artifact_flags",
+    "attempt_count",
+    "callback_notes",
+    "callback_requested_by",
+    "campaign_id",
+    "country",
+    "created_at",
+    "email_masked",
+    "id",
+    "is_priority_callback",
+    "last_attempt_at",
+    "last_attempt_outcome",
+    "name_masked",
+    "next_eligible_at",
+    "normalized_fields",
+    "phone_masked",
+    "scheduled_callback_at",
+    "source_row_ref",
+    "status",
+    "timezone",
+    "updated_at"
+  ],
+  "columns_signature": "0f1887f1784f06841c6891292558a5a2c81ff21361ffea388f13feea4a7b681e"
+}

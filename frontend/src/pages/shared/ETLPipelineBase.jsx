@@ -72,7 +72,11 @@ export default function ETLPipelineBase({ copy = {} }) {
   const loadRuns = async () => {
     setLoadingRuns(true);
     try {
-      setRuns(await getETLRuns());
+      const fetchedRuns = await getETLRuns();
+      setRuns(fetchedRuns);
+
+      // Clear stale error banner once runs can be refreshed successfully.
+      setSyncMsg((current) => (current.type === "error" ? { type: "", text: "" } : current));
     } catch {
       // non critical
     } finally {
@@ -107,6 +111,23 @@ export default function ETLPipelineBase({ copy = {} }) {
       });
       await loadRuns();
     } catch (err) {
+      // Reconcile with latest runs before showing a failure banner.
+      try {
+        const refreshedRuns = await getETLRuns();
+        setRuns(refreshedRuns);
+        const latestRunForSource = refreshedRuns.find((runItem) => runItem.data_source === sourceId);
+
+        if (latestRunForSource?.status === "success") {
+          setSyncMsg({
+            type: "success",
+            text: `Sync for "${sourceName}" completed successfully (Run #${latestRunForSource.id}).`,
+          });
+          return;
+        }
+      } catch {
+        // Keep original trigger error if reconciliation fails.
+      }
+
       const detail = err?.response?.data?.detail || "Sync failed. Check the server logs.";
       setSyncMsg({ type: "error", text: detail });
     } finally {
