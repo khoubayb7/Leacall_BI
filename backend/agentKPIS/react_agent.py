@@ -53,7 +53,7 @@ def generate_kpi_file(
 
     prompt = (
         "You are a senior Python engineer responsible for generating production-ready KPI code.\n"
-        "Use the reference file strictly as a style and structure guide.\n"
+        "Use the reference file as the mandatory template, not only inspiration.\n"
         "Do not modify the reference file under any circumstance.\n\n"
         "--- REFERENCE KPI CODE ---\n"
         f"{reference_code}\n"
@@ -72,6 +72,12 @@ def generate_kpi_file(
         "- Do NOT call external APIs or database in the generated script.\n\n"
         "Output location:\n"
         f"Write the file exactly at: {relative_path}\n\n"
+        "Strict template contract (must match reference structure):\n"
+        "1) Keep the same high-level module organization as the reference.\n"
+        "2) Keep function names load_dataset and generate_kpis.\n"
+        "3) Keep helper-style design (safe parsing, extraction helpers, divide helper).\n"
+        "4) Keep output style deterministic and JSON-serializable.\n"
+        "5) Keep KPI sections in the same shape as the reference when fields are available, and use safe defaults when missing.\n\n"
         "Implementation requirements:\n"
         "1) Output must be valid Python code only (no markdown, no explanations).\n"
         "2) Use only Python standard library modules.\n"
@@ -79,9 +85,11 @@ def generate_kpi_file(
         "4) Define generate_kpis() that returns KPI dictionary computed from dataset['records'].\n"
         "5) Include if __name__ == '__main__' and print JSON output only.\n"
         "6) Keep implementation concise, readable, and deterministic.\n"
-        "7) Follow clean naming and professional code style.\n\n"
+        "7) Follow clean naming and professional code style.\n"
+        "8) If any field alias is unknown, gracefully fallback to 0/False/empty instead of failing.\n\n"
         "Final step:\n"
-        "After writing the file, confirm completion."
+        "After writing the file, run execute_python_file on the generated file and ensure it exits with code 0. "
+        "If it fails, fix and rerun until success, then confirm completion."
     )
 
     response = agent.invoke({"messages": [("user", prompt)]})
