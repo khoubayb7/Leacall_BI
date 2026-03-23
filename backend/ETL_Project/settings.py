@@ -6,10 +6,14 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+
+# Try to load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-j3%_a)kfan%3gy@fj20m2zlzabd$3s_g08(owyj@glzcmixbq)")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
@@ -67,8 +71,8 @@ DATABASES = {
         "NAME": os.getenv("POSTGRES_DB", "bi_system"),
         "USER": os.getenv("POSTGRES_USER", "postgres"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", "postgres"),
-        "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
-        "PORT": os.getenv("POSTGRES_PORT", "55432"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "55432"),
     }
 }
 

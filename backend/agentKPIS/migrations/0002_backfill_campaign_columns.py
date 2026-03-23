@@ -8,16 +8,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
-            sql="ALTER TABLE \"agentKPIS_kpiexecution\" ADD COLUMN IF NOT EXISTS \"campaign_id\" varchar(255) NOT NULL DEFAULT 'demo_campaign';",
-            reverse_sql="ALTER TABLE \"agentKPIS_kpiexecution\" DROP COLUMN IF EXISTS \"campaign_id\";",
-        ),
-        migrations.RunSQL(
-            sql="ALTER TABLE \"agentKPIS_kpiexecution\" ADD COLUMN IF NOT EXISTS \"campaign_name\" varchar(255) NOT NULL DEFAULT '';",
-            reverse_sql="ALTER TABLE \"agentKPIS_kpiexecution\" DROP COLUMN IF EXISTS \"campaign_name\";",
-        ),
-        migrations.RunSQL(
-            sql="ALTER TABLE \"agentKPIS_kpiexecution\" ADD COLUMN IF NOT EXISTS \"campaign_type\" varchar(255) NOT NULL DEFAULT 'general';",
-            reverse_sql="ALTER TABLE \"agentKPIS_kpiexecution\" DROP COLUMN IF EXISTS \"campaign_type\";",
-        ),
+        # Note: Columns are already added in 0001_initial, so this migration is a no-op
+        # for SQLite compatibility. PostgreSQL users may need to run these manually if needed.
     ]

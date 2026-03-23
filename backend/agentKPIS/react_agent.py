@@ -2,7 +2,7 @@ from pathlib import Path
 
 from django.conf import settings
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import HumanMessage
 
 from agentKPIS.tools import get_kpi_tools
 
@@ -49,7 +49,6 @@ def generate_kpi_file(
         max_retries=1,
     )
     tools = get_kpi_tools(str(workspace_dir))
-    agent = create_react_agent(llm, tools)
 
     prompt = (
         "You are a senior Python engineer responsible for generating production-ready KPI code.\n"
@@ -92,9 +91,9 @@ def generate_kpi_file(
         "If it fails, fix and rerun until success, then confirm completion."
     )
 
-    response = agent.invoke({"messages": [("user", prompt)]})
+    response = llm.invoke([HumanMessage(content=prompt)])
 
     return {
         "file_path": str(absolute_path.resolve()),
-        "agent_messages": response.get("messages", []),
+        "agent_messages": [response],
     }
