@@ -72,6 +72,7 @@ export default function KPIDashboardBase({ copy = {} }) {
   const [history, setHistory] = useState([]);
   const [etlRuns, setEtlRuns] = useState([]);
   const [loadingEtlRuns, setLoadingEtlRuns] = useState(true);
+  const [etlRunsUnavailable, setEtlRunsUnavailable] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [latestExecution, setLatestExecution] = useState(null);
   const [activeTaskId, setActiveTaskId] = useState("");
@@ -87,16 +88,26 @@ export default function KPIDashboardBase({ copy = {} }) {
   const selectedCampaignType = selectedCampaign?.campaign_type || "";
   const selectedDataSourceId = selectedCampaign?.data_source_id;
 
+  const hasSuccessfulKpiForSelectedCampaign = useMemo(() => {
+    if (!selectedCampaignId) {
+      return false;
+    }
+    return history.some(
+      (row) => row.campaign_id === selectedCampaignId && row.status === "success",
+    );
+  }, [history, selectedCampaignId]);
+
   const hasLoadedEtlData = useMemo(() => {
     if (!selectedDataSourceId) {
       return false;
     }
-    return etlRuns.some(
+    const hasSuccessfulLoadedRun = etlRuns.some(
       (run) => Number(run.data_source) === Number(selectedDataSourceId)
         && run.status === "success"
         && Number(run.loaded_count || 0) > 0,
     );
-  }, [etlRuns, selectedDataSourceId]);
+    return hasSuccessfulLoadedRun || hasSuccessfulKpiForSelectedCampaign;
+  }, [etlRuns, selectedDataSourceId, hasSuccessfulKpiForSelectedCampaign]);
 
   const upsertHistoryRow = (execution) => {
     if (!execution?.id) {
@@ -164,18 +175,26 @@ export default function KPIDashboardBase({ copy = {} }) {
   useEffect(() => {
     const loadEtlRuns = async () => {
       setLoadingEtlRuns(true);
+      setEtlRunsUnavailable(false);
       try {
         const rows = await getETLRuns();
         setEtlRuns(rows || []);
-      } catch {
+      } catch (err) {
+        const s = err?.response?.status;
+        if (s === 401 || s === 403) {
+          await logoutUser();
+          navigate("/login", { replace: true });
+          return;
+        }
         setEtlRuns([]);
+        setEtlRunsUnavailable(true);
       } finally {
         setLoadingEtlRuns(false);
       }
     };
 
     loadEtlRuns();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (!form.campaign_name && !selectedCampaignId) {
@@ -362,7 +381,7 @@ export default function KPIDashboardBase({ copy = {} }) {
             </div>
           ) : null}
 
-          {!loadingEtlRuns && selectedCampaignId && !hasLoadedEtlData ? (
+          {!loadingEtlRuns && !etlRunsUnavailable && selectedCampaignId && !hasLoadedEtlData ? (
             <div className="full-row">
               <AlertBox type="error">
                 No loaded ETL records yet for this campaign. Run ETL first, then generate KPI.
@@ -396,7 +415,7 @@ export default function KPIDashboardBase({ copy = {} }) {
         {!latestExecution ? (
           <p>No execution yet.</p>
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap kpi-table-wrap">
             <table>
               <tbody>
                 <tr>
@@ -423,7 +442,7 @@ export default function KPIDashboardBase({ copy = {} }) {
             </table>
 
             {payloadRows.length > 0 ? (
-              <div className="table-wrap" style={{ marginTop: 12 }}>
+              <div className="table-wrap kpi-table-wrap" style={{ marginTop: 12 }}>
                 <DataTable
                   rows={payloadRows}
                   columns={["Metric", "Value"]}
@@ -448,7 +467,7 @@ export default function KPIDashboardBase({ copy = {} }) {
       </SurfaceCard>
 
       <SurfaceCard title={labels.historySectionTitle}>
-        <div className="table-wrap">
+        <div className="table-wrap kpi-table-wrap">
           <DataTable
             loading={loadingHistory}
             rows={history}

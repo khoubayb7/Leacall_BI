@@ -1,10 +1,64 @@
 from pathlib import Path
+import ast
+import textwrap
 
 from django.conf import settings
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
 from agentKPIS.tools import get_kpi_tools
+
+
+def _extract_python_code(content: str) -> str:
+    """Extract Python code from an LLM response and strip markdown fences if present."""
+    raw = (content or "").strip()
+    if not raw:
+        return ""
+
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        if lines:
+            lines = lines[1:]
+        while lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        raw = "\n".join(lines).strip()
+
+    return raw
+
+
+def _build_fallback_kpi_code(campaign_id: str, campaign_name: str, campaign_type: str, dataset_file_path: str) -> str:
+    """Return deterministic fallback KPI code when LLM output is missing/invalid."""
+    return textwrap.dedent(
+        f"""
+        import json
+        from datetime import datetime, timezone
+
+
+        def load_dataset():
+            with open({dataset_file_path!r}, "r", encoding="utf-8") as fp:
+                return json.load(fp)
+
+
+        def generate_kpis():
+            dataset = load_dataset()
+            records = dataset.get("records", [])
+            latest = dataset.get("latest_success_run") or {{}}
+            return {{
+                "campaign_id": {campaign_id!r},
+                "campaign_name": {campaign_name!r},
+                "campaign_type": {campaign_type!r},
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "status": "fallback_template",
+                "records_count": len(records),
+                "latest_loaded_count": latest.get("loaded_count", 0),
+                "sample_fields": sorted(list(records[0].keys())) if records else [],
+            }}
+
+
+        if __name__ == "__main__":
+            print(json.dumps(generate_kpis()))
+        """
+    ).strip() + "\n"
 
 
 def generate_kpi_file(
@@ -92,6 +146,23 @@ def generate_kpi_file(
     )
 
     response = llm.invoke([HumanMessage(content=prompt)])
+
+    generated_code = _extract_python_code(getattr(response, "content", ""))
+    if generated_code:
+        try:
+            ast.parse(generated_code)
+        except SyntaxError:
+            generated_code = ""
+
+    if not generated_code:
+        generated_code = _build_fallback_kpi_code(
+            campaign_id=campaign_id,
+            campaign_name=campaign_name,
+            campaign_type=campaign_type,
+            dataset_file_path=dataset_file_path,
+        )
+
+    absolute_path.write_text(generated_code, encoding="utf-8")
 
     return {
         "file_path": str(absolute_path.resolve()),

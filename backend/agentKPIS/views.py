@@ -1,4 +1,5 @@
 import json
+import logging
 from django.utils.decorators import method_decorator
 from django.views import View
 
@@ -7,9 +8,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from ETL.models import ClientDataSource
-from agentKPIS.executorKPI import execute_kpi_file
 from agentKPIS.models import KPIExecution
 from agentKPIS.tasks import generate_and_execute_kpi_task
+
+
+logger = logging.getLogger(__name__)
 
 
 def _execution_to_dict(row: KPIExecution) -> dict:
@@ -187,32 +190,59 @@ class GenerateKPIAPIView(View):
             status="queued",
         )
 
-        async_result = generate_and_execute_kpi_task.apply_async(
-            args=[
+        payload = {
+            "record_id": record.id,
+            "campaign_id": campaign_id,
+            "campaign_name": campaign_name,
+            "campaign_type": campaign_type,
+            "client_id": client_id,
+            "force_regenerate": force_regenerate,
+        }
+
+        try:
+            async_result = generate_and_execute_kpi_task.apply_async(args=[payload])
+            record.celery_task_id = async_result.id
+            record.save(update_fields=["celery_task_id"])
+            return JsonResponse(
                 {
-                    "record_id": record.id,
+                    "status": "queued",
+                    "execution_id": record.id,
+                    "task_id": async_result.id,
                     "campaign_id": campaign_id,
                     "campaign_name": campaign_name,
                     "campaign_type": campaign_type,
-                    "client_id": client_id,
                     "force_regenerate": force_regenerate,
-                }
-            ]
-        )
-        record.celery_task_id = async_result.id
-        record.save(update_fields=["celery_task_id"])
-        return JsonResponse(
-            {
-                "status": "queued",
-                "execution_id": record.id,
-                "task_id": async_result.id,
-                "campaign_id": campaign_id,
-                "campaign_name": campaign_name,
-                "campaign_type": campaign_type,
-                "force_regenerate": force_regenerate,
-            },
-            status=202,
-        )
+                },
+                status=202,
+            )
+        except Exception as exc:
+            logger.exception("Failed to queue KPI task; falling back to synchronous execution.")
+            try:
+                # Keep KPI generation usable even if broker/worker is unavailable.
+                generate_and_execute_kpi_task.apply(args=[payload])
+                record.refresh_from_db()
+                return JsonResponse(
+                    {
+                        "status": "ok",
+                        "mode": "sync_fallback",
+                        "message": "KPI executed synchronously because queue is unavailable.",
+                        "execution": _execution_to_dict(record),
+                        "queue_error": str(exc),
+                    },
+                    status=200,
+                )
+            except Exception as sync_exc:
+                record.status = "failed"
+                record.error_message = f"KPI queue and sync fallback both failed: {sync_exc}"
+                record.save(update_fields=["status", "error_message"])
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": "Unable to queue KPI generation.",
+                        "detail": str(sync_exc),
+                    },
+                    status=503,
+                )
 
 
 @method_decorator(require_http_methods(["GET"]), name="dispatch")

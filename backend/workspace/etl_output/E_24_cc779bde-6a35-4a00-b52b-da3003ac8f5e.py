@@ -79,11 +79,11 @@ class Extractor:
             response = self._client.get(page_url)
 
             if isinstance(response, list):
-                self.raw_data.extend([self._stringify_row(row) for row in response if isinstance(row, dict)])
+                self.raw_data.extend([self._stringify_row(row) for row in response if isinstance(row, dict) and 'id' in row])
                 page_url = None
             elif isinstance(response, dict):
                 results = response.get("results", [])
-                self.raw_data.extend([self._stringify_row(row) for row in results if isinstance(row, dict)])
+                self.raw_data.extend([self._stringify_row(row) for row in results if isinstance(row, dict) and 'id' in row])
                 page_url = response.get("next")
                 # If 'next' is a full URL, convert it to a relative path
                 if page_url and page_url.startswith("http"):

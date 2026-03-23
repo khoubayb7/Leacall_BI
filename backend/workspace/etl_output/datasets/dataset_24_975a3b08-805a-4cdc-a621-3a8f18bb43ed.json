@@ -1,12 +1,12 @@
 {
   "campaign_id": "975a3b08-805a-4cdc-a621-3a8f18bb43ed",
   "campaign_name": "fg",
-  "generated_at": "2026-03-20T04:25:17.978221+00:00",
+  "generated_at": "2026-03-23T01:49:03.347594+00:00",
   "latest_success_run": {
-    "id": 28,
+    "id": 35,
     "status": "success",
-    "started_at": "2026-03-20T03:44:43.860936+00:00",
-    "completed_at": "2026-03-20T03:44:44.355610+00:00",
+    "started_at": "2026-03-21T03:55:14.920467+00:00",
+    "completed_at": "2026-03-21T03:55:16.623057+00:00",
     "raw_count": 1,
     "transformed_count": 1,
     "loaded_count": 1
