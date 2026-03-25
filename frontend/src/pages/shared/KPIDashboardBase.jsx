@@ -375,12 +375,6 @@ export default function KPIDashboardBase({ copy = {} }) {
             </select>
           </label>
 
-          {selectedCampaignId ? (
-            <div className="full-row">
-              <AlertBox type="success">{labels.selectedCampaignIdLabel}: {selectedCampaignId}</AlertBox>
-            </div>
-          ) : null}
-
           {!loadingEtlRuns && !etlRunsUnavailable && selectedCampaignId && !hasLoadedEtlData ? (
             <div className="full-row">
               <AlertBox type="error">

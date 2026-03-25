@@ -3,15 +3,17 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-export function ClientActivityChart({ clients }) {
+export function ClientActivityChart({ distribution = {} }) {
+  const entries = Object.entries(distribution || {});
+
   const chartData = {
-    labels: clients?.map((c) => c.username) || ["Client 1", "Client 2", "Client 3"],
+    labels: entries.length ? entries.map(([key]) => key.replace(/_/g, " ")) : ["No data"],
     datasets: [
       {
-        label: "Call Volume",
-        data: clients?.map((c) => c.call_volume) || [2500, 3200, 1800],
-        backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"],
-        borderColor: ["#1e40af", "#059669", "#d97706"],
+        label: "Lead count",
+        data: entries.length ? entries.map(([, count]) => Number(count) || 0) : [0],
+        backgroundColor: "rgba(3, 212, 255, 0.35)",
+        borderColor: "#03d4ff",
         borderWidth: 1,
       },
     ],
@@ -23,19 +25,37 @@ export function ClientActivityChart({ clients }) {
         data={chartData}
         options={{
           responsive: true,
-          maintainAspectRatio: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: {
-              position: "top",
+              position: "bottom",
+              labels: {
+                color: "#d9ebff",
+                boxWidth: 12,
+              },
             },
             title: {
               display: true,
-              text: "Top Clients by Call Volume",
+              text: "Lead Status Distribution",
+              color: "#d9ebff",
             },
           },
           scales: {
+            x: {
+              ticks: {
+                color: "#8eaed3",
+                maxRotation: 20,
+                minRotation: 0,
+              },
+              grid: { color: "rgba(23, 60, 103, 0.35)" },
+            },
             y: {
               beginAtZero: true,
+              ticks: {
+                color: "#8eaed3",
+                precision: 0,
+              },
+              grid: { color: "rgba(23, 60, 103, 0.35)" },
             },
           },
         }}

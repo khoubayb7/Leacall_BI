@@ -5,6 +5,7 @@ Django settings for ETL_Project project.
 import os
 from datetime import timedelta
 from pathlib import Path
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -137,6 +138,15 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
     "socket_connect_timeout": 2,
 }
 CELERY_BROKER_CONNECTION_RETRY = False
+
+# Run periodic KPI refresh for all active client campaigns.
+# Default schedule: every day at 02:00 UTC.
+CELERY_BEAT_SCHEDULE = {
+    "refresh-all-client-campaign-kpis": {
+        "task": "agentKPIS.refresh_all_campaign_kpis",
+        "schedule": crontab(hour=int(os.getenv("KPI_BEAT_HOUR_UTC", "2")), minute=int(os.getenv("KPI_BEAT_MINUTE_UTC", "0"))),
+    },
+}
 
 # Retry policy for stale pending ETL runs.
 ETL_PENDING_REQUEUE_AFTER_SECONDS = int(os.getenv("ETL_PENDING_REQUEUE_AFTER_SECONDS", "45"))

@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { ClientActivityChart } from "../components/charts/ClientActivityChart";
+import { PlatformHealthChart } from "../components/charts/PlatformHealthChart";
+import { ResourceUsageChart } from "../components/charts/ResourceUsageChart";
 import { logoutUser } from "../services/authService";
 import { getKPICampaignOptions } from "../services/kpiService";
 import { getClientPlatformData } from "../services/platformService";
+import "../styles/charts.css";
 
 const INITIAL_KPIS = {
   campaign_performance: {
@@ -335,6 +339,21 @@ export default function ClientPlatform() {
         </div>
       </div>
 
+      <div className="kpi-section">
+        <h2>Statistical Graphics</h2>
+        <div className="charts-grid">
+          <article className="surface-card chart-surface">
+            <ClientActivityChart distribution={clientKPIs.lead_quality.lead_status_distribution} />
+          </article>
+          <article className="surface-card chart-surface">
+            <PlatformHealthChart data={clientKPIs.lead_quality.response_rate_by_time} />
+          </article>
+          <article className="surface-card chart-surface full-width">
+            <ResourceUsageChart talkToListenRatio={clientKPIs.conversation_intelligence.talk_to_listen_ratio} />
+          </article>
+        </div>
+      </div>
+
       {/* Lead Quality KPIs */}
       <div className="kpi-section">
         <h2>Lead Quality & Segmentation</h2>
@@ -500,3 +519,4 @@ export default function ClientPlatform() {
     </section>
   );
 }
+

@@ -1,6 +1,7 @@
 from pathlib import Path
 import hashlib
 import json
+import logging
 
 from celery import shared_task
 from django.conf import settings
@@ -11,6 +12,9 @@ from agentKPIS.models import KPIExecution
 from agentKPIS.react_agent import generate_kpi_file
 from ETL.models import ClientDataSource
 from ETL.tasks import build_loaded_dataset_snapshot, _safe_token, _columns_signature
+
+
+logger = logging.getLogger(__name__)
 
 
 def _write_fallback_kpi_file(
@@ -208,4 +212,69 @@ def generate_and_execute_kpi_task(self, payload: dict | None = None) -> dict:
         "file_path": file_path,
         "celery_task_id": self.request.id,
     }
+
+
+@shared_task(name="agentKPIS.refresh_all_campaign_kpis")
+def refresh_all_campaign_kpis_task() -> dict:
+    """
+    Queue KPI refresh for every active client campaign.
+
+    Intended to run from Celery Beat.
+    """
+    sources = (
+        ClientDataSource.objects
+        .filter(is_active=True)
+        .select_related("client")
+        .order_by("client_id", "campaign_name", "campaign_id")
+    )
+
+    total_sources = 0
+    queued = 0
+    skipped = 0
+    failures = []
+
+    for source in sources:
+        total_sources += 1
+
+        if not source.client_id:
+            skipped += 1
+            failures.append(
+                {
+                    "client_id": None,
+                    "campaign_id": source.campaign_id,
+                    "reason": "missing_client_id",
+                }
+            )
+            continue
+
+        payload = {
+            "client_id": source.client_id,
+            "campaign_id": source.campaign_id,
+            "campaign_name": source.campaign_name or source.campaign_id,
+            "campaign_type": source.campaign_type,
+            "force_regenerate": False,
+        }
+
+        try:
+            generate_and_execute_kpi_task.apply_async(args=[payload])
+            queued += 1
+        except Exception as exc:  # noqa: BLE001
+            skipped += 1
+            failures.append(
+                {
+                    "client_id": source.client_id,
+                    "campaign_id": source.campaign_id,
+                    "reason": str(exc),
+                }
+            )
+
+    summary = {
+        "status": "completed",
+        "total_sources": total_sources,
+        "queued": queued,
+        "skipped": skipped,
+        "failures": failures,
+    }
+    logger.info("Beat KPI refresh summary: %s", summary)
+    return summary
 

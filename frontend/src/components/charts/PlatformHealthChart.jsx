@@ -13,24 +13,20 @@ import {
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 export function PlatformHealthChart({ data }) {
+  const entries = Object.entries(data || {});
+
   const chartData = {
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"],
+    labels: entries.length ? entries.map(([slot]) => slot.replace(/_/g, " ")) : ["No data"],
     datasets: [
       {
-        label: "API Response Time (ms)",
-        data: data?.responseTimeData || [45, 52, 48, 61, 55, 49],
-        borderColor: "#3b82f6",
-        backgroundColor: "rgba(59, 130, 246, 0.1)",
+        label: "Response rate %",
+        data: entries.length ? entries.map(([, rate]) => (Number(rate) || 0) * 100) : [0],
+        borderColor: "#03d4ff",
+        backgroundColor: "rgba(3, 212, 255, 0.18)",
         tension: 0.4,
         borderWidth: 2,
-      },
-      {
-        label: "Error Rate (%)",
-        data: data?.errorRateData || [2, 1.8, 2.2, 1.5, 2.1, 1.9],
-        borderColor: "#ef4444",
-        backgroundColor: "rgba(239, 68, 68, 0.1)",
-        tension: 0.4,
-        borderWidth: 2,
+        pointBackgroundColor: "#7fffd4",
+        fill: true,
       },
     ],
   };
@@ -41,19 +37,34 @@ export function PlatformHealthChart({ data }) {
         data={chartData}
         options={{
           responsive: true,
-          maintainAspectRatio: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: {
-              position: "top",
+              position: "bottom",
+              labels: {
+                color: "#d9ebff",
+                boxWidth: 12,
+              },
             },
             title: {
               display: true,
-              text: "API Performance Over Time",
+              text: "Response Rate by Time",
+              color: "#d9ebff",
             },
           },
           scales: {
+            x: {
+              ticks: { color: "#8eaed3", maxRotation: 0 },
+              grid: { color: "rgba(23, 60, 103, 0.35)" },
+            },
             y: {
               beginAtZero: true,
+              suggestedMax: 100,
+              ticks: {
+                color: "#8eaed3",
+                callback: (value) => `${value}%`,
+              },
+              grid: { color: "rgba(23, 60, 103, 0.35)" },
             },
           },
         }}
