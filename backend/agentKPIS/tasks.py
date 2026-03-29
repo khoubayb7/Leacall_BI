@@ -113,6 +113,7 @@ def generate_and_execute_kpi_task(self, payload: dict | None = None) -> dict:
     if record is None:
         record = KPIExecution.objects.create(
             ask="AUTO_INTERNAL_PROMPT",
+            client_id=int(client_id) if client_id not in (None, "") else None,
             campaign_id=campaign_id,
             campaign_name=campaign_name,
             campaign_type=campaign_type,

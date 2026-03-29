@@ -27,20 +27,20 @@ class Loader:
             logger.warning("Nothing to load — empty record list.")
             return
 
-        record_id_field = "id"  # Using the new field 'id'
+        record_id_field = "id"  # Using the new field 'id' as specified
 
         for row in records:
             raw_id = row.get(record_id_field)
             if raw_id is None:
                 continue
 
-            kacicall_id = str(raw_id).strip()
-            if not kacicall_id:
+            leacall_id = str(raw_id).strip()
+            if not leacall_id:
                 continue
 
             _, created = CampaignRecord.objects.update_or_create(
                 data_source=self.data_source,
-                leacall_record_id=kacicall_id,
+                leacall_record_id=leacall_id,
                 defaults={
                     "data": row,
                     "source_run": self.run,

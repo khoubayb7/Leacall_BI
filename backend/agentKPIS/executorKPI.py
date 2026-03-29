@@ -6,6 +6,7 @@ from pathlib import Path
 from django.conf import settings
 
 from agentKPIS.models import KPIExecution
+from agentKPIS.schema import validate_kpi_payload
 
 
 def _get_venv_python() -> str:
@@ -62,16 +63,25 @@ def execute_kpi_file(record_id: int) -> dict:
         output += f"EXIT CODE: {result.returncode}"
 
         payload = None
+        validation_error = ""
         if result.stdout.strip():
             try:
-                payload = json.loads(result.stdout.strip())
+                raw_payload = json.loads(result.stdout.strip())
+                # Validate against KPI schema
+                is_valid, error_msg, validated_payload = validate_kpi_payload(raw_payload)
+                if is_valid:
+                    payload = validated_payload.model_dump()
+                else:
+                    # Payload is not valid per schema but was parsed as JSON
+                    validation_error = f"KPI payload validation failed: {error_msg}"
+                    payload = raw_payload  # Store raw for debugging
             except json.JSONDecodeError:
                 payload = None
 
         record.execution_output = output
         record.kpi_payload = payload
-        record.status = "success" if result.returncode == 0 else "failed"
-        record.error_message = "" if result.returncode == 0 else "Execution failed"
+        record.status = "success" if result.returncode == 0 and not validation_error else "failed"
+        record.error_message = validation_error or ("" if result.returncode == 0 else "Execution failed")
         record.save(
             update_fields=["execution_output", "kpi_payload", "status", "error_message"]
         )

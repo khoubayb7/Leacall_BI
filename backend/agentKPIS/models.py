@@ -18,6 +18,15 @@ class KPIExecution(models.Model):
     # Original user instruction given to the KPI agent.
     ask = models.TextField()
 
+    # Owner account for access control and audit.
+    client = models.ForeignKey(
+        "user.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="kpi_executions",
+    )
+
     # Selected campaign id from client dropdown.
     campaign_id = models.CharField(max_length=255, default="demo_campaign")
 

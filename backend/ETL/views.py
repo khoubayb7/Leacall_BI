@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+import logging
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -8,9 +9,8 @@ from rest_framework.views import APIView
 
 from user.permissions import IsAdmin, IsClient
 
-from .executor import ETLPipelineExecutor
 from .models import CampaignRecord, ClientDataSource, ETLRun
-from .tasks import refresh_campaign_etl_and_schema
+from .tasks import run_etl_pipeline
 from .serializers import (
     CampaignRecordSerializer,
     ClientDataSourceSerializer,
@@ -19,6 +19,7 @@ from .serializers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 # ── Data Sources (admin manages, clients can view their own) ──────────────────
@@ -126,22 +127,60 @@ class ETLSyncView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Use ETL task helper so each refresh also replaces/regenerates E/T/L files.
-        refresh = refresh_campaign_etl_and_schema(ds)
-        run = ETLRun.objects.filter(pk=refresh.get("run_id")).first() if refresh.get("run_id") else None
+        # Create pending run immediately, then queue background ETL execution.
+        run = ETLRun.objects.create(
+            data_source=ds,
+            client=ds.client,
+            status=ETLRun.Status.PENDING,
+        )
 
-        if run is None:
+        try:
+            async_result = run_etl_pipeline.apply_async(args=[ds.id, run.id])
+            logger.info(
+                "Manual ETL queued: task_id=%s run_id=%s data_source_id=%s client_id=%s campaign_id=%s",
+                async_result.id,
+                run.id,
+                ds.id,
+                ds.client_id,
+                ds.campaign_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception(
+                "Manual ETL queueing failed for data_source_id=%s run_id=%s",
+                ds.id,
+                run.id,
+            )
+            run.status = ETLRun.Status.FAILED
+            run.error_message = f"Failed to enqueue ETL task: {exc}"
+            run.save(update_fields=["status", "error_message"])
             return Response(
-                {"detail": refresh.get("error", "ETL refresh failed")},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {
+                    "status": "error",
+                    "detail": "Unable to queue ETL run.",
+                    "error": str(exc),
+                    "run_id": run.id,
+                    "data_source_id": ds.id,
+                    "campaign_id": ds.campaign_id,
+                    "campaign_name": ds.campaign_name or ds.campaign_id,
+                    "client_id": ds.client_id,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        if refresh.get("ok"):
-            return Response(ETLRunSerializer(run).data, status=status.HTTP_201_CREATED)
-
-        payload = ETLRunSerializer(run).data
-        payload["detail"] = refresh.get("error") or run.error_message or "ETL refresh failed"
-        return Response(payload, status=status.HTTP_400_BAD_REQUEST)
+        # Keep legacy fields (run_id/status) for frontend compatibility and
+        # add task metadata similar to KPI async flow.
+        return Response(
+            {
+                "status": "queued",
+                "run_id": run.id,
+                "task_id": async_result.id,
+                "data_source_id": ds.id,
+                "campaign_id": ds.campaign_id,
+                "campaign_name": ds.campaign_name or ds.campaign_id,
+                "client_id": ds.client_id,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
 class CampaignSyncView(APIView):

@@ -146,6 +146,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "agentKPIS.refresh_all_campaign_kpis",
         "schedule": crontab(hour=int(os.getenv("KPI_BEAT_HOUR_UTC", "2")), minute=int(os.getenv("KPI_BEAT_MINUTE_UTC", "0"))),
     },
+    "refresh-all-campaign-etls": {
+        "task": "ETL.refresh_all_campaign_etls",
+        "schedule": crontab(hour=int(os.getenv("ETL_BEAT_HOUR_UTC", "1")), minute=int(os.getenv("ETL_BEAT_MINUTE_UTC", "0"))),
+    },
 }
 
 # Retry policy for stale pending ETL runs.

@@ -1,15 +1,13 @@
-import json
 import logging
-from django.utils.decorators import method_decorator
-from django.views import View
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 
 from ETL.models import ClientDataSource
 from agentKPIS.models import KPIExecution
 from agentKPIS.tasks import generate_and_execute_kpi_task
+from django.db.models import QuerySet
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 logger = logging.getLogger(__name__)
@@ -31,7 +29,7 @@ def _execution_to_dict(row: KPIExecution) -> dict:
     }
 
 
-def _to_bool(value, default=False):
+def _to_bool(value, default: bool = False) -> bool:
     if value is None:
         return default
     if isinstance(value, bool):
@@ -41,34 +39,39 @@ def _to_bool(value, default=False):
     return bool(value)
 
 
-def _latest_file_path(campaign_id: str, campaign_name: str) -> str:
-    qs = KPIExecution.objects.exclude(file_path="").order_by("-created_at")
-    if campaign_id:
-        qs = qs.filter(campaign_id=campaign_id)
-    if campaign_name:
-        qs = qs.filter(campaign_name=campaign_name)
-
-    row = qs.first()
-    return row.file_path if row and row.file_path else ""
+def _is_admin(user) -> bool:
+    return getattr(user, "role", None) == "admin"
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class GenerateKPIAPIView(View):
+def _visible_campaign_sources(request) -> QuerySet[ClientDataSource]:
+    qs = ClientDataSource.objects.filter(is_active=True)
+    if not _is_admin(request.user):
+        qs = qs.filter(client=request.user)
+    return qs
+
+
+def _visible_kpi_executions(request) -> QuerySet[KPIExecution]:
+    qs = KPIExecution.objects.order_by("-created_at")
+    if _is_admin(request.user):
+        return qs
+    return qs.filter(client=request.user)
+
+
+class GenerateKPIAPIView(APIView):
     """
     Queue KPI generation/execution task.
 
     This endpoint supports campaign selection by campaign_name (preferred)
     or campaign_id (fallback), and does not require ask text.
-    Each call generates fresh KPIs for the selected campaign.
     """
 
-    http_method_names = ["get", "post"]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        campaign_name = str(request.GET.get("campaign_name", "")).strip()
-        campaign_id = str(request.GET.get("campaign_id", "")).strip()
-        campaign_type = str(request.GET.get("campaign_type", "")).strip()
-        force_regenerate = _to_bool(request.GET.get("force_regenerate"), default=False)
+        campaign_name = str(request.query_params.get("campaign_name", "")).strip()
+        campaign_id = str(request.query_params.get("campaign_id", "")).strip()
+        campaign_type = str(request.query_params.get("campaign_type", "")).strip()
+        force_regenerate = _to_bool(request.query_params.get("force_regenerate"), default=False)
         return self._queue_from_selection(
             request=request,
             campaign_name=campaign_name,
@@ -78,12 +81,7 @@ class GenerateKPIAPIView(View):
         )
 
     def post(self, request):
-        body = {}
-        if request.body:
-            try:
-                body = json.loads(request.body)
-            except json.JSONDecodeError:
-                return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+        body = request.data or {}
         campaign_name = str(body.get("campaign_name", "")).strip()
         campaign_id = str(body.get("campaign_id", "")).strip()
         campaign_type = str(body.get("campaign_type", "")).strip()
@@ -105,17 +103,42 @@ class GenerateKPIAPIView(View):
         force_regenerate: bool,
     ):
         if not campaign_name and not campaign_id:
-            return JsonResponse(
+            return Response(
                 {
                     "status": "error",
                     "message": "Provide 'campaign_name' (preferred) or 'campaign_id'.",
                 },
-                status=400,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         resolved = self._resolve_campaign(request, campaign_name=campaign_name, campaign_id=campaign_id)
-        if isinstance(resolved, JsonResponse):
-            return resolved
+        if isinstance(resolved, dict) and resolved.get("error") == "multiple_campaign_name_matches":
+            return Response(
+                {
+                    "status": "error",
+                    "message": (
+                        "Multiple campaigns share this name. "
+                        "Please provide campaign_id as fallback."
+                    ),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        if not resolved:
+            if campaign_name:
+                return Response(
+                    {
+                        "status": "error",
+                        "message": f"Campaign name '{campaign_name}' not found.",
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            return Response(
+                {
+                    "status": "error",
+                    "message": f"Campaign id '{campaign_id}' not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         return self._queue_task(
             campaign_id=resolved["campaign_id"],
@@ -127,33 +150,14 @@ class GenerateKPIAPIView(View):
 
     @staticmethod
     def _resolve_campaign(request, campaign_name: str, campaign_id: str):
-        qs = ClientDataSource.objects.filter(is_active=True)
-
-        user = getattr(request, "user", None)
-        if getattr(user, "is_authenticated", False) and getattr(user, "role", None) != "admin":
-            qs = qs.filter(client=user)
+        qs = _visible_campaign_sources(request)
 
         if campaign_name:
             matches = list(qs.filter(campaign_name=campaign_name))
             if not matches:
-                return JsonResponse(
-                    {
-                        "status": "error",
-                        "message": f"Campaign name '{campaign_name}' not found.",
-                    },
-                    status=404,
-                )
+                return None
             if len(matches) > 1:
-                return JsonResponse(
-                    {
-                        "status": "error",
-                        "message": (
-                            "Multiple campaigns share this name. "
-                            "Please provide campaign_id as fallback."
-                        ),
-                    },
-                    status=409,
-                )
+                return {"error": "multiple_campaign_name_matches"}
             ds = matches[0]
             return {
                 "campaign_id": ds.campaign_id,
@@ -164,13 +168,7 @@ class GenerateKPIAPIView(View):
 
         ds = qs.filter(campaign_id=campaign_id).first()
         if not ds:
-            return JsonResponse(
-                {
-                    "status": "error",
-                    "message": f"Campaign id '{campaign_id}' not found.",
-                },
-                status=404,
-            )
+            return None
 
         return {
             "campaign_id": ds.campaign_id,
@@ -183,6 +181,7 @@ class GenerateKPIAPIView(View):
     def _queue_task(campaign_id: str, campaign_name: str, campaign_type: str, client_id: int, force_regenerate: bool):
         record = KPIExecution.objects.create(
             ask="AUTO_INTERNAL_PROMPT",
+            client_id=client_id,
             campaign_id=campaign_id,
             campaign_name=campaign_name,
             campaign_type=campaign_type,
@@ -203,7 +202,7 @@ class GenerateKPIAPIView(View):
             async_result = generate_and_execute_kpi_task.apply_async(args=[payload])
             record.celery_task_id = async_result.id
             record.save(update_fields=["celery_task_id"])
-            return JsonResponse(
+            return Response(
                 {
                     "status": "queued",
                     "execution_id": record.id,
@@ -213,15 +212,15 @@ class GenerateKPIAPIView(View):
                     "campaign_type": campaign_type,
                     "force_regenerate": force_regenerate,
                 },
-                status=202,
+                status=status.HTTP_202_ACCEPTED,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to queue KPI task; falling back to synchronous execution.")
             try:
                 # Keep KPI generation usable even if broker/worker is unavailable.
                 generate_and_execute_kpi_task.apply(args=[payload])
                 record.refresh_from_db()
-                return JsonResponse(
+                return Response(
                     {
                         "status": "ok",
                         "mode": "sync_fallback",
@@ -229,61 +228,58 @@ class GenerateKPIAPIView(View):
                         "execution": _execution_to_dict(record),
                         "queue_error": str(exc),
                     },
-                    status=200,
+                    status=status.HTTP_200_OK,
                 )
-            except Exception as sync_exc:
+            except Exception as sync_exc:  # noqa: BLE001
                 record.status = "failed"
                 record.error_message = f"KPI queue and sync fallback both failed: {sync_exc}"
                 record.save(update_fields=["status", "error_message"])
-                return JsonResponse(
+                return Response(
                     {
                         "status": "error",
                         "message": "Unable to queue KPI generation.",
                         "detail": str(sync_exc),
                     },
-                    status=503,
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
 
-@method_decorator(require_http_methods(["GET"]), name="dispatch")
-class KPIExecutionDetailAPIView(View):
-    """
-    Read one KPI execution record from database.
-    """
+class KPIExecutionDetailAPIView(APIView):
+    """Read one KPI execution record from database."""
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, execution_id: int):
-        try:
-            row = KPIExecution.objects.get(id=execution_id)
-        except KPIExecution.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Execution not found"}, status=404)
+        row = _visible_kpi_executions(request).filter(id=execution_id).first()
+        if not row:
+            return Response({"status": "error", "message": "Execution not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        return JsonResponse(_execution_to_dict(row))
+        return Response(_execution_to_dict(row))
 
 
-@method_decorator(require_http_methods(["GET"]), name="dispatch")
-class KPIExecutionListAPIView(View):
-    """
-    Return recent KPI executions with optional limit.
-    """
+class KPIExecutionListAPIView(APIView):
+    """Return recent KPI executions with optional limit."""
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
-            limit = int(request.GET.get("limit", "20"))
+            limit = int(request.query_params.get("limit", "20"))
         except (TypeError, ValueError):
             limit = 20
 
-        campaign_name = str(request.GET.get("campaign_name", "")).strip()
-        campaign_id = str(request.GET.get("campaign_id", "")).strip()
+        campaign_name = str(request.query_params.get("campaign_name", "")).strip()
+        campaign_id = str(request.query_params.get("campaign_id", "")).strip()
 
         limit = max(1, min(limit, 100))
-        qs = KPIExecution.objects.order_by("-created_at")
+        qs = _visible_kpi_executions(request)
         if campaign_name:
             qs = qs.filter(campaign_name=campaign_name)
         if campaign_id:
             qs = qs.filter(campaign_id=campaign_id)
 
-        rows = qs[:limit]
-        return JsonResponse(
+        rows = list(qs[:limit])
+        return Response(
             {
                 "status": "ok",
                 "count": len(rows),
@@ -292,34 +288,26 @@ class KPIExecutionListAPIView(View):
         )
 
 
-@method_decorator(require_http_methods(["GET"]), name="dispatch")
-class KPIExecutionByTaskAPIView(View):
-    """
-    Read one KPI execution by celery task id.
-    """
+class KPIExecutionByTaskAPIView(APIView):
+    """Read one KPI execution by celery task id."""
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, task_id: str):
-        row = KPIExecution.objects.filter(celery_task_id=task_id).order_by("-id").first()
+        row = _visible_kpi_executions(request).filter(celery_task_id=task_id).order_by("-id").first()
         if not row:
-            return JsonResponse({"status": "error", "message": "Execution not found yet"}, status=404)
+            return Response({"status": "error", "message": "Execution not found yet"}, status=status.HTTP_404_NOT_FOUND)
 
-        return JsonResponse(_execution_to_dict(row))
+        return Response(_execution_to_dict(row))
 
 
-@method_decorator(require_http_methods(["GET"]), name="dispatch")
-class CampaignOptionsAPIView(View):
-    """
-    Return active campaign options for dropdowns.
-    """
+class CampaignOptionsAPIView(APIView):
+    """Return active campaign options for dropdowns."""
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = ClientDataSource.objects.filter(is_active=True)
-
-        user = getattr(request, "user", None)
-        if getattr(user, "is_authenticated", False) and getattr(user, "role", None) != "admin":
-            qs = qs.filter(client=user)
-
-        rows = qs.order_by("campaign_name", "campaign_id")
+        rows = _visible_campaign_sources(request).order_by("campaign_name", "campaign_id")
         options = [
             {
                 "data_source_id": row.id,
@@ -329,5 +317,4 @@ class CampaignOptionsAPIView(View):
             }
             for row in rows
         ]
-        return JsonResponse({"status": "ok", "campaigns": options})
-
+        return Response({"status": "ok", "campaigns": options})
